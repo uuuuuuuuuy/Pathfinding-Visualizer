@@ -4,6 +4,7 @@ import pygame
 
 from .generate import GenerationCallback, MazeGenerator
 from .animations import AnimatingNode, Animation, AnimationCallback, Animator
+from .menu_config import SpeedSetting
 from .pathfinder.models.node import Node
 from .pathfinder.models.solution import Solution
 from .pathfinder.main import PathFinder
@@ -79,7 +80,7 @@ class Maze:
         self.coords = self._generate_coordinates()
 
         # ...
-        self.speed = "Fast"
+        self.speed = SpeedSetting.FAST
 
     def _generate_coordinates(self) -> list[list[tuple[int, int]]]:
         """Generate screen coordinates for maze
@@ -173,16 +174,13 @@ class Maze:
         self.maze[pos[0]][pos[1]].cost = cost
         self.maze[pos[0]][pos[1]].color = color
 
-    def set_speed(self, speed_str: str) -> None:
+    def set_speed(self, speed: SpeedSetting) -> None:
         """Set visualisation speed
 
         Args:
-            speed_str (str): Speed string
+            speed (SpeedSetting): Speed option
         """
-        if not speed_str in ("Fast", "Medium", "Slow"):
-            return
-
-        self.speed = speed_str
+        self.speed = speed
 
     def clear_board(self) -> None:
         """Clear maze walls
@@ -281,17 +279,17 @@ class Maze:
         """
 
         match algorithm:
-            case "Recursive Division":
+            case "递归划分":
                 self._draw_walls_around()
                 self.generator.recursive_division(
                     1, self.width - 2, 1, self.height - 2)
-            case "Randomised DFS":
+            case "随机深度优先":
                 self.generator.randomised_dfs()
-            case "Prim's Algorithm":
+            case "普里姆算法":
                 self.generator.randomised_prims_algorithm()
-            case "Basic Weight Maze":
+            case "基本权重迷宫":
                 self.generator.basic_weight_maze()
-            case "Basic Random Maze":
+            case "基本随机迷宫":
                 self.generator.basic_random_maze()
 
         list(self.animator.nodes_to_animate.values()
@@ -360,28 +358,19 @@ class Maze:
 
         self.animator.add_nodes_to_animate(nodes_to_animate)
 
-    def solve(self, algo_name: str,) -> Solution:
-        """Solve the maze with an algorithm
+    def solve(self, search: Search) -> Solution:
+        """Solve the maze with an algorithm.
 
         Args:
-            algo_name (str): Name of algorithm
+            search (Search): Search strategy to use
         """
-        # String -> Search Algorithm
-        mapper: dict[str, Search] = {
-            "A* Search": Search.ASTAR_SEARCH,
-            "Dijkstra's Search": Search.DIJKSTRAS_SEARCH,
-            "Greedy Best First Search": Search.GREEDY_BEST_FIRST_SEARCH,
-            "Breadth First Search": Search.BREADTH_FIRST_SEARCH,
-            "Depth First Search": Search.DEPTH_FIRST_SEARCH,
-        }
-
         # Instantiate Grid for PathFinder
         grid = Grid(self.maze, self.start, self.goal)  # type: ignore
 
         # Solve the maze
         solution = PathFinder.find_path(
             grid=grid,
-            search=mapper[algo_name.strip()],
+            search=search,
         )
 
         return solution
@@ -416,11 +405,11 @@ class Maze:
             )
 
         match self.speed:
-            case "Fast":
+            case SpeedSetting.FAST:
                 gap = 5
-            case "Medium":
+            case SpeedSetting.MEDIUM:
                 gap = 30
-            case "Slow":
+            case SpeedSetting.SLOW:
                 gap = 1000
             case _:
                 gap = 5
