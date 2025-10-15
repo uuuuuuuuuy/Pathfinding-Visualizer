@@ -409,11 +409,11 @@ def draw() -> None:
             state.results = {}
             run_all(0)
 
-    if (generate_menu.draw() or generate_menu.clicked) \
+    if (generation_menu.draw() or generation_menu.clicked) \
             and not animator.animating:
         state.overlay = True
 
-        if generate_menu.selected:
+        if generation_menu.selected:
             maze.clear_board()
             text = state.label.text
 
@@ -429,11 +429,11 @@ def draw() -> None:
                 state.label.rect.bottom = HEADER_HEIGHT - 10
 
             maze.generate_maze(
-                algorithm=generate_menu.selected.text,
+                algorithm=generation_menu.selected.text,
                 after_generation=callback
             )
 
-            algorithm = generate_menu.selected.text
+            algorithm = generation_menu.selected.text
 
             if algorithm == "基本权重迷宫":
                 new_text = "正在生成基本权重迷宫"
