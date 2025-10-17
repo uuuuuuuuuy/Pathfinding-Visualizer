@@ -9,6 +9,7 @@ from .constants import (
     WIDTH,
     HEIGHT
 )
+from .fonts import load_font
 
 
 class Widget(ABC):
@@ -54,12 +55,7 @@ class Button(Widget):
         self.background_color = background_color
 
         # Render text
-        if bold:
-            font = pygame.font.Font(
-                "assets/fonts/Montserrat-Bold.ttf", font_size)
-        else:
-            font = pygame.font.Font(
-                "assets/fonts/Montserrat-Regular.ttf", font_size)
+        font = load_font(font_size, bold=bold)
 
         self.text_surf = font.render(
             self.text, True, foreground_color
