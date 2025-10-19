@@ -7,9 +7,9 @@ from .constants import (
     DARK_BLUE,
     WHITE,
     WIDTH,
-    HEIGHT
+    HEIGHT,
+    load_font,
 )
-from .fonts import load_font
 
 
 class Widget(ABC):
