@@ -41,7 +41,7 @@ from .menu_config import (
     AlgorithmDefinition,
     SpeedSetting,
 )
-from .ui.layout import create_top_bar
+from .ui.layout import create_selection_summary, create_top_bar
 
 # Initialize PyGame
 pygame.init()
@@ -62,11 +62,14 @@ generation_bundle = top_controls.generation
 
 algorithm_menu = algorithm_bundle.menu
 speed_menu = speed_bundle.menu
-speed_button = speed_bundle.button
 visualize_button = top_controls.visualize_button
 comparison_menu = comparison_bundle.menu
 generation_menu = generation_bundle.menu
-clear_button = top_controls.clear_button
+pause_button = top_controls.pause_button
+reset_button = top_controls.reset_button
+
+selection_summary = create_selection_summary(WINDOW)
+summary_area = selection_summary.area
 
 # Instantiate Maze and Animator
 state = State()
@@ -88,17 +91,11 @@ def main() -> None:
     )
     state.label.rect.bottom = HEADER_HEIGHT - 10
 
-    state.speed_label = Label(
-        surface=WINDOW,
-        text=SpeedSetting.FAST.value,
-        font_size=16,
-        x=speed_button.rect.x,
-        y=speed_button.rect.bottom,
-        foreground_color=pygame.Color(*WHITE),
-        background_color=pygame.Color(*BLUE_2),
-    )
-    state.speed_label.rect.centerx = speed_button.rect.centerx
     speed_bundle.set_selection(SpeedSetting.FAST.value)
+    maze.set_speed(SpeedSetting.FAST)
+    selection_summary.set_value("speed", SpeedSetting.FAST.value)
+    selection_summary.set_value("comparison", "关闭")
+    selection_summary.set_value("generation", "未开始")
 
     # Game loop
     mouse_is_down = False
@@ -296,20 +293,15 @@ def draw() -> None:
     """
     top_controls.layout()
 
-    if state.speed_label:
-        state.speed_label.rect.midtop = (
-            speed_button.rect.centerx,
-            speed_button.rect.bottom + 6,
-        )
-        state.speed_label.text_rect.topleft = (
-            state.speed_label.rect.x + state.speed_label.padding,
-            state.speed_label.rect.y + state.speed_label.padding,
-        )
-
     # Fill white, draw top background and title text
     WINDOW.fill(WHITE)
     pygame.draw.rect(WINDOW, DARK_BLUE, top)
     title.draw()
+
+    pygame.draw.rect(WINDOW, BLUE_2, summary_area)
+    selection_summary.layout()
+    for field in selection_summary.values():
+        field.label.draw()
 
     # Draw maze legend
     texts = {
@@ -323,7 +315,7 @@ def draw() -> None:
     }
 
     x = 50
-    y = top.bottom + 20
+    y = summary_area.bottom + 20
     for text in texts:
         # Rectangle (Symbol)
         pygame.draw.rect(WINDOW, texts[text], (x, y, 30, 30))
@@ -355,7 +347,6 @@ def draw() -> None:
 
     # Draw algo label
     state.label.draw()
-    state.speed_label.draw()
 
     maze.draw()
 
@@ -368,6 +359,7 @@ def draw() -> None:
                 algorithm_menu.selected.text
             ]
             algorithm_bundle.set_selection(algorithm_menu.selected.text)
+            selection_summary.set_value("algorithm", algorithm_menu.selected.text)
             state.label = Label(
                 state.current_algorithm.label, "center", 0,
                 background_color=pygame.Color(*WHITE),
@@ -392,25 +384,9 @@ def draw() -> None:
         state.overlay = True
 
         if speed_menu.selected:
-            state.speed_label = Label(
-                surface=WINDOW,
-                text=speed_menu.selected.text,
-                font_size=16,
-                x=speed_button.rect.x,
-                y=speed_button.rect.bottom,
-                foreground_color=pygame.Color(*WHITE),
-                background_color=pygame.Color(*BLUE_2),
-            )
-            state.speed_label.rect.midtop = (
-                speed_button.rect.centerx,
-                speed_button.rect.bottom + 6,
-            )
-            state.speed_label.text_rect.topleft = (
-                state.speed_label.rect.x + state.speed_label.padding,
-                state.speed_label.rect.y + state.speed_label.padding,
-            )
             maze.set_speed(SpeedSetting(speed_menu.selected.text))
             speed_bundle.set_selection(speed_menu.selected.text)
+            selection_summary.set_value("speed", speed_menu.selected.text)
             state.overlay = False
 
     if speed_menu.just_closed and state.overlay and not (
@@ -426,10 +402,26 @@ def draw() -> None:
         idx = ALGORITHM_DEFINITIONS.index(state.current_algorithm)
         run_single(idx)
 
-    if clear_button.draw() and not maze.animator.animating:
-        maze.clear_board()
-        state.done_visualising = False
-        state.need_update = True
+    pause_clicked = pause_button.draw()
+    if pause_clicked:
+        if animator.paused:
+            animator.resume()
+            pause_button.update_text("暂停动画")
+            pause_button.set_active(False)
+        elif animator.nodes_to_animate:
+            animator.pause()
+            pause_button.update_text("继续动画")
+            pause_button.set_active(True)
+        else:
+            pause_button.update_text("暂停动画")
+            pause_button.set_active(False)
+
+    if not animator.nodes_to_animate and not animator.animating and not animator.paused:
+        pause_button.update_text("暂停动画")
+        pause_button.set_active(False)
+
+    if reset_button.draw():
+        reset_simulation()
 
     if (comparison_menu.draw() or comparison_menu.clicked) \
             and not animator.animating:
@@ -438,6 +430,7 @@ def draw() -> None:
         if comparison_menu.selected \
                 and comparison_menu.selected.text == "当前迷宫":
             comparison_bundle.set_selection(comparison_menu.selected.text)
+            selection_summary.set_value("comparison", comparison_menu.selected.text)
             state.results = {}
             run_all(0)
         elif comparison_menu.selected \
@@ -445,6 +438,7 @@ def draw() -> None:
             state.run_all_mazes = True
             state.results = {}
             comparison_bundle.set_selection(comparison_menu.selected.text)
+            selection_summary.set_value("comparison", comparison_menu.selected.text)
             run_all(0)
 
     if comparison_menu.just_closed and state.overlay and not (
@@ -459,7 +453,11 @@ def draw() -> None:
         if generation_menu.selected:
             maze.clear_board()
             text = state.label.text
-            generation_bundle.set_selection(generation_menu.selected.text)
+            selected_generation = generation_menu.selected.text
+            generation_bundle.set_selection(selected_generation)
+            selection_summary.set_value(
+                "generation", f"{selected_generation}（进行中）"
+            )
 
             def callback():
                 state.overlay = False
@@ -471,13 +469,14 @@ def draw() -> None:
                     surface=WINDOW,
                 )
                 state.label.rect.bottom = HEADER_HEIGHT - 10
+                selection_summary.set_value("generation", selected_generation)
 
             maze.generate_maze(
-                algorithm=generation_menu.selected.text,
+                algorithm=selected_generation,
                 after_generation=callback
             )
 
-            algorithm = generation_menu.selected.text
+            algorithm = selected_generation
 
             if algorithm == "基本权重迷宫":
                 new_text = "正在生成基本权重迷宫"
@@ -511,6 +510,44 @@ def draw() -> None:
         or animator.nodes_to_animate
     ) and state.overlay:
         state.overlay = False
+
+
+def reset_simulation() -> None:
+    """Stop ongoing animations and restore the default maze configuration."""
+
+    animator.stop()
+    maze.clear_board()
+    maze.set_speed(SpeedSetting.FAST)
+
+    state.done_visualising = False
+    state.need_update = True
+    state.overlay = False
+    state.results = {}
+    state.run_all_mazes = False
+    state.results_popup = None
+    state.current_algorithm = None
+
+    state.label = Label(
+        "请选择算法", "center", 0,
+        background_color=pygame.Color(*WHITE),
+        foreground_color=pygame.Color(*DARK),
+        padding=6, font_size=20, outline=False,
+        surface=WINDOW,
+    )
+    state.label.rect.bottom = HEADER_HEIGHT - 10
+
+    algorithm_bundle.set_selection(None)
+    speed_bundle.set_selection(SpeedSetting.FAST.value)
+    comparison_bundle.set_selection(None)
+    generation_bundle.set_selection(None)
+
+    selection_summary.set_value("algorithm", None)
+    selection_summary.set_value("speed", SpeedSetting.FAST.value)
+    selection_summary.set_value("comparison", "关闭")
+    selection_summary.set_value("generation", "未开始")
+
+    pause_button.update_text("暂停动画")
+    pause_button.set_active(False)
 
 
 def run_single(idx: int) -> None:

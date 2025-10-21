@@ -8,7 +8,6 @@ class State:
     
     overlay: bool = False
     label: Label
-    speed_label: Label
     done_visualising: bool
     need_update: bool
     results: dict[str, dict[str, float]]
