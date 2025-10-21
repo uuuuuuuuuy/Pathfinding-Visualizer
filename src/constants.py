@@ -1,3 +1,4 @@
+import re
 import sys
 from functools import lru_cache
 from pathlib import Path
@@ -8,19 +9,115 @@ import pygame
 try:
     from .fonts import load_font as _load_font_impl
 except ImportError:
-    FONT_CANDIDATES: tuple[tuple[str, str], ...] = (
-        ("assets/fonts/NotoSansSC-Regular.otf", "assets/fonts/NotoSansSC-Bold.otf"),
-        ("assets/fonts/NotoSansSC-Regular.ttf", "assets/fonts/NotoSansSC-Bold.ttf"),
-        ("assets/fonts/SourceHanSansSC-Regular.otf", "assets/fonts/SourceHanSansSC-Bold.otf"),
-        ("assets/fonts/SourceHanSans-Regular.otf", "assets/fonts/SourceHanSans-Bold.otf"),
-        ("assets/fonts/MiSans-Regular.ttf", "assets/fonts/MiSans-Bold.ttf"),
-        ("assets/fonts/NotoSansSC-Regular.otf", "assets/fonts/NotoSansSC-Regular.otf"),
-        ("assets/fonts/NotoSansSC-Regular.ttf", "assets/fonts/NotoSansSC-Regular.ttf"),
-        ("assets/fonts/SourceHanSansSC-Regular.otf", "assets/fonts/SourceHanSansSC-Regular.otf"),
-        ("assets/fonts/SourceHanSans-Regular.otf", "assets/fonts/SourceHanSans-Regular.otf"),
-        ("assets/fonts/MiSans-Regular.ttf", "assets/fonts/MiSans-Regular.ttf"),
-        ("assets/fonts/Montserrat-Regular.ttf", "assets/fonts/Montserrat-Bold.ttf"),
+    CJK_KEYWORDS: tuple[str, ...] = (
+        "sc",
+        "cn",
+        "zh",
+        "han",
+        "hei",
+        "yahei",
+        "fang",
+        "song",
+        "kai",
+        "noto",
+        "sourcehan",
+        "simsun",
+        "simhei",
+        "pingfang",
+        "wenquanyi",
+        "微软雅黑",
+        "黑体",
+        "仿宋",
+        "楷体",
     )
+
+    _STYLE_SUFFIX = re.compile(
+        r"[-_ ]?(regular|bold|medium|semibold|demibold|black|heavy|light|thin|"
+        r"extrabold|extrablack|book|normal|std|w[0-9]{2})$",
+        re.IGNORECASE,
+    )
+
+    def _normalize_family(stem: str) -> str:
+        normalized = _STYLE_SUFFIX.sub("", stem)
+        return normalized.lower()
+
+    def _style_tag(stem: str) -> str:
+        lower = stem.lower()
+        if re.search(r"(bold|black|heavy|extrabold|demibold|semibold|w[7-9][0-9])", lower):
+            return "bold"
+        return "regular"
+
+    def _discover_font_pairs(font_dir: Path) -> list[tuple[str, str]]:
+        if not font_dir.is_dir():
+            return []
+
+        font_files = [
+            path for path in font_dir.iterdir()
+            if path.suffix.lower() in {".ttf", ".otf"} and path.is_file()
+        ]
+
+        if not font_files:
+            return []
+
+        grouped: dict[str, dict[str, list[Path]]] = {}
+
+        for font_path in font_files:
+            family = _normalize_family(font_path.stem)
+            styles = grouped.setdefault(family, {"regular": [], "bold": []})
+            styles[_style_tag(font_path.stem)].append(font_path)
+
+        candidates: list[tuple[Path, Path]] = []
+
+        for styles in grouped.values():
+            regular_candidates = styles["regular"] or styles["bold"]
+            if not regular_candidates:
+                continue
+
+            regular_path = sorted(regular_candidates)[0]
+            bold_path = sorted(styles["bold"])[0] if styles["bold"] else regular_path
+            candidates.append((regular_path, bold_path))
+
+        def score(pair: tuple[Path, Path]) -> tuple[int, str]:
+            regular_path, _ = pair
+            name = regular_path.stem.lower()
+
+            if "montserrat" in name:
+                return 2, name
+
+            if any(keyword in name for keyword in CJK_KEYWORDS):
+                return 0, name
+
+            return 1, name
+
+        candidates.sort(key=score)
+
+        candidate_pairs: list[tuple[str, str]] = [
+            (str(regular), str(bold)) for regular, bold in candidates
+        ]
+
+        candidate_pairs.append(
+            ("assets/fonts/Montserrat-Regular.ttf", "assets/fonts/Montserrat-Bold.ttf")
+        )
+
+        return candidate_pairs
+
+    def _candidate_pairs() -> Iterable[tuple[str, str]]:
+        static_candidates: tuple[tuple[str, str], ...] = (
+            ("assets/fonts/NotoSansSC-Regular.otf", "assets/fonts/NotoSansSC-Bold.otf"),
+            ("assets/fonts/NotoSansSC-Regular.ttf", "assets/fonts/NotoSansSC-Bold.ttf"),
+            ("assets/fonts/SourceHanSansSC-Regular.otf", "assets/fonts/SourceHanSansSC-Bold.otf"),
+            ("assets/fonts/SourceHanSans-Regular.otf", "assets/fonts/SourceHanSans-Bold.otf"),
+            ("assets/fonts/MiSans-Regular.ttf", "assets/fonts/MiSans-Bold.ttf"),
+        )
+
+        discovered = _discover_font_pairs(Path("assets/fonts"))
+        seen: set[tuple[str, str]] = set()
+
+        for pair in (*static_candidates, *discovered):
+            if pair in seen:
+                continue
+            seen.add(pair)
+            yield pair
 
     def _existing_font_pair(
         candidates: Iterable[Tuple[str, str]]
@@ -47,7 +144,7 @@ except ImportError:
 
     @lru_cache(maxsize=2)
     def _resolved_pair() -> tuple[str, str]:
-        return _existing_font_pair(FONT_CANDIDATES)
+        return _existing_font_pair(_candidate_pairs())
 
     def load_font(size: int, bold: bool = False) -> pygame.font.Font:
         regular_path, bold_path = _resolved_pair()
