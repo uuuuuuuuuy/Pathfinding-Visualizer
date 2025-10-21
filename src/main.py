@@ -55,6 +55,19 @@ top_controls = create_top_bar(WINDOW)
 top = top_controls.area
 title = top_controls.title
 
+algorithm_bundle = top_controls.algorithm
+speed_bundle = top_controls.speed
+comparison_bundle = top_controls.comparison
+generation_bundle = top_controls.generation
+
+algorithm_menu = algorithm_bundle.menu
+speed_menu = speed_bundle.menu
+speed_button = speed_bundle.button
+visualize_button = top_controls.visualize_button
+comparison_menu = comparison_bundle.menu
+generation_menu = generation_bundle.menu
+clear_button = top_controls.clear_button
+
 # Instantiate Maze and Animator
 state = State()
 maze = Maze(surface=WINDOW)
@@ -62,15 +75,6 @@ animator = Animator(surface=WINDOW, maze=maze)
 maze_generator = MazeGenerator(animator=animator)
 maze.animator = animator
 maze.generator = maze_generator
-
-
-algorithm_menu = top_controls.algorithm.menu
-speed_menu = top_controls.speed.menu
-speed_button = top_controls.speed.button
-visualize_button = top_controls.visualize_button
-comparison_menu = top_controls.comparison.menu
-generation_menu = top_controls.generation.menu
-clear_button = top_controls.clear_button
 
 
 def main() -> None:
@@ -94,6 +98,7 @@ def main() -> None:
         background_color=pygame.Color(*BLUE_2),
     )
     state.speed_label.rect.centerx = speed_button.rect.centerx
+    speed_bundle.set_selection(SpeedSetting.FAST.value)
 
     # Game loop
     mouse_is_down = False
@@ -350,6 +355,7 @@ def draw() -> None:
             state.current_algorithm = ALGORITHMS_BY_LABEL[
                 algorithm_menu.selected.text
             ]
+            algorithm_bundle.set_selection(algorithm_menu.selected.text)
             state.label = Label(
                 state.current_algorithm.label, "center", 0,
                 background_color=pygame.Color(*WHITE),
@@ -363,6 +369,11 @@ def draw() -> None:
                 instant_algorithm(maze, state.current_algorithm)
 
             state.overlay = False
+
+    if algorithm_menu.just_closed and state.overlay and not (
+        animator.animating or state.results_popup
+    ):
+        state.overlay = False
 
     if (speed_menu.draw() or speed_menu.clicked) \
             and not maze.animator.animating:
@@ -380,7 +391,13 @@ def draw() -> None:
             )
             state.speed_label.rect.centerx = speed_button.rect.centerx
             maze.set_speed(SpeedSetting(speed_menu.selected.text))
+            speed_bundle.set_selection(speed_menu.selected.text)
             state.overlay = False
+
+    if speed_menu.just_closed and state.overlay and not (
+        animator.animating or state.results_popup
+    ):
+        state.overlay = False
 
     if visualize_button.draw() \
         and state.current_algorithm \
@@ -401,13 +418,20 @@ def draw() -> None:
 
         if comparison_menu.selected \
                 and comparison_menu.selected.text == "当前迷宫":
+            comparison_bundle.set_selection(comparison_menu.selected.text)
             state.results = {}
             run_all(0)
         elif comparison_menu.selected \
                 and comparison_menu.selected.text == "不同迷宫":
             state.run_all_mazes = True
             state.results = {}
+            comparison_bundle.set_selection(comparison_menu.selected.text)
             run_all(0)
+
+    if comparison_menu.just_closed and state.overlay and not (
+        animator.animating or state.results_popup
+    ):
+        state.overlay = False
 
     if (generation_menu.draw() or generation_menu.clicked) \
             and not animator.animating:
@@ -416,6 +440,7 @@ def draw() -> None:
         if generation_menu.selected:
             maze.clear_board()
             text = state.label.text
+            generation_bundle.set_selection(generation_menu.selected.text)
 
             def callback():
                 state.overlay = False
@@ -456,6 +481,17 @@ def draw() -> None:
         if state.results_popup.draw():
             state.results_popup = None
             state.overlay = False
+
+    if not (
+        algorithm_menu.clicked
+        or speed_menu.clicked
+        or comparison_menu.clicked
+        or generation_menu.clicked
+        or state.results_popup
+        or animator.animating
+        or animator.nodes_to_animate
+    ) and state.overlay:
+        state.overlay = False
 
 
 def run_single(idx: int) -> None:

@@ -44,6 +44,8 @@ class Button(Widget):
             outline: bool = False,
             foreground_color: pygame.Color = pygame.Color(0, 0, 0),
             background_color: pygame.Color = pygame.Color(255, 255, 255),
+            hover_background_color: pygame.Color | None = None,
+            active_background_color: pygame.Color | None = None,
             surface: pygame.surface.Surface | None = None,
     ) -> None:
         if surface:
@@ -53,6 +55,9 @@ class Button(Widget):
         self.outline = outline
         self.foreground_color = foreground_color
         self.background_color = background_color
+        self._base_background_color = background_color
+        self.font_size = font_size
+        self.bold = bold
 
         # Render text
         font = load_font(font_size, bold=bold)
@@ -84,6 +89,16 @@ class Button(Widget):
 
         self.text_rect.topleft = self.rect.x + padding, self.rect.y + padding
 
+        self._hover_background_color = hover_background_color or self._tint_color(
+            self._base_background_color, 20
+        )
+        self._active_background_color = (
+            active_background_color
+            or self._tint_color(self._base_background_color, 35)
+        )
+        self._is_active = False
+        self._pressed_last_frame = False
+
     def set_surface(self, surf: pygame.surface.Surface) -> None:
         self.screen = surf
 
@@ -102,13 +117,23 @@ class Button(Widget):
 
         # Get mouse position
         pos = pygame.mouse.get_pos()
+        hovered = self.rect.collidepoint(pos)
+        pressed = hovered and pygame.mouse.get_pressed()[0]
 
-        # Check mouseover and clicked conditions
-        action = self.rect.collidepoint(pos) \
-            and pygame.mouse.get_pressed()[0]
+        if pressed and not self._pressed_last_frame:
+            action = True
+
+        self._pressed_last_frame = pressed
+
+        if self._is_active:
+            background = self._active_background_color
+        elif hovered:
+            background = self._hover_background_color
+        else:
+            background = self._base_background_color
 
         # Draw button
-        pygame.draw.rect(self.screen, self.background_color, self.rect)
+        pygame.draw.rect(self.screen, background, self.rect)
 
         if self.outline:
             pygame.draw.rect(self.screen, BLACK,
@@ -121,6 +146,40 @@ class Button(Widget):
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}{tuple(vars(self).values())!r}"
+
+    @staticmethod
+    def _tint_color(color: pygame.Color, delta: int) -> pygame.Color:
+        """Create a lighter colour variant used for hover/active states."""
+
+        new_color = pygame.Color(color)
+        new_color.r = min(new_color.r + delta, 255)
+        new_color.g = min(new_color.g + delta, 255)
+        new_color.b = min(new_color.b + delta, 255)
+        return new_color
+
+    def set_active(self, active: bool) -> None:
+        """Highlight the button as active (e.g. when a menu is open)."""
+
+        self._is_active = active
+
+    def update_text(self, text: str) -> None:
+        """Update the label rendered on the button while keeping its anchor."""
+
+        if text == self.text:
+            return
+
+        self.text = text
+        font = load_font(self.font_size, bold=self.bold)
+        self.text_surf = font.render(self.text, True, self.foreground_color)
+        self.text_rect = self.text_surf.get_rect()
+
+        self.width = self.text_rect.width + self.padding * 2
+        self.height = self.text_rect.height + self.padding * 2
+
+        self.rect.width = self.width
+        self.rect.height = self.height
+
+        self.text_rect.topleft = self.rect.x + self.padding, self.rect.y + self.padding
 
 
 class Label(Button):
@@ -155,36 +214,20 @@ class Menu(Widget):
         self.children = children
         self.clicked = False
         self.selected: Widget | None = None
+        self.current_selection: Widget | None = None
+        self.just_closed = False
+        self._mouse_was_down = False
+        self._layout_dirty = True
+        self.popup_rect = pygame.Rect(0, 0, 0, 0)
 
-        self.height = sum(child.rect.height for child in children)
-        self.width = max(child.rect.width for child in children)
+        self._layout_children()
 
-        self.x = self.button.rect.x - 10
-        self.y = self.button.rect.y
-
-        if self.width < self.button.width:
-            self.width = self.button.width + 40
-            self.x = self.button.rect.x
-
-        children[0].rect.x = self.x
-        children[0].rect.top = self.button.rect.bottom
-
-        for i in range(1, len(children)):
-            child = children[i]
-            prev = children[i - 1]
-            child.rect.x = self.x
-            child.rect.top = prev.rect.bottom
-
-        self.rect = self.button.rect
-        self.popup_rect = pygame.Rect(self.x - 20,
-                                self.button.rect.bottom,
-                                self.width + 40,
-                                self.height + 20)
-        
 
     def set_surface(self, surf: pygame.surface.Surface) -> None:
         self.screen = surf
         self.button.set_surface(surf)
+        for child in self.children:
+            child.set_surface(surf)
 
     def draw(self) -> bool:
         """Draw the menu
@@ -196,17 +239,40 @@ class Menu(Widget):
             bool: Whether any button in this menu is clicked
         """
 
+        if self._layout_dirty:
+            self._layout_children()
+
         clicked = self.button.draw()
         self.selected = None
+        self.just_closed = False
 
         if clicked:
-            self.clicked = True
+            self.clicked = not self.clicked
+            self.button.set_active(self.clicked)
+            if not self.clicked:
+                self.just_closed = True
+                self._mouse_was_down = pygame.mouse.get_pressed()[0]
+                return False
 
         if not self.clicked:
+            self._mouse_was_down = pygame.mouse.get_pressed()[0]
             return False
 
         # Whether button is clicked or not
         action = False
+
+        pos = pygame.mouse.get_pos()
+        mouse_down = pygame.mouse.get_pressed()[0]
+
+        if mouse_down and not self._mouse_was_down:
+            inside_button = self.button.rect.collidepoint(pos)
+            inside_popup = self.popup_rect.collidepoint(pos)
+            if not inside_button and not inside_popup:
+                self.clicked = False
+                self.button.set_active(False)
+                self.just_closed = True
+                self._mouse_was_down = mouse_down
+                return False
 
         pygame.draw.rect(
             self.screen,
@@ -217,12 +283,82 @@ class Menu(Widget):
 
         # Handle selection
         for child in self.children:
+            if isinstance(child, Button):
+                child.set_active(child is self.current_selection)
             if child.draw():
                 self.selected = child
+                self.current_selection = child
                 self.clicked = False
+                self.button.set_active(False)
+                self.just_closed = True
                 action = True
+                break
+
+        self._mouse_was_down = mouse_down
 
         return action
+
+    def mark_dirty(self) -> None:
+        """Schedule a layout refresh before the next draw call."""
+
+        self._layout_dirty = True
+
+    def set_current_selection(self, label: str | None) -> None:
+        """Highlight the menu option matching ``label`` when reopened."""
+
+        self.current_selection = None
+        if label is None:
+            return
+
+        for child in self.children:
+            if getattr(child, "text", None) == label:
+                self.current_selection = child
+                break
+
+    def _layout_children(self) -> None:
+        """Recalculate dropdown geometry based on the button and options."""
+
+        if not self.children:
+            self.popup_rect = pygame.Rect(
+                self.button.rect.x,
+                self.button.rect.bottom,
+                self.button.rect.width,
+                0,
+            )
+            self._layout_dirty = False
+            return
+
+        inner_margin = 8
+        vertical_margin = 6
+
+        max_child_width = max(child.rect.width for child in self.children)
+        popup_width = max(self.button.rect.width, max_child_width + inner_margin * 2)
+        popup_x = self.button.rect.x
+        popup_y = self.button.rect.bottom + vertical_margin
+
+        current_top = popup_y + inner_margin
+        for child in self.children:
+            child.rect.x = popup_x + inner_margin
+            child.rect.width = popup_width - inner_margin * 2
+            if hasattr(child, "width"):
+                child.width = child.rect.width
+            child.rect.top = current_top
+            if hasattr(child, "text_rect"):
+                child.text_rect.topleft = (
+                    child.rect.x + child.padding,
+                    child.rect.y + child.padding,
+                )
+            current_top = child.rect.bottom
+
+        popup_height = current_top - popup_y + inner_margin
+        self.popup_rect = pygame.Rect(
+            popup_x,
+            popup_y,
+            popup_width,
+            popup_height,
+        )
+
+        self._layout_dirty = False
 
 
 class Orientation(Enum):

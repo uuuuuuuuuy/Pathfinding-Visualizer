@@ -26,6 +26,24 @@ class MenuBundle:
 
     button: Button
     menu: Menu
+    label: str
+    current_value: str | None = None
+
+    def set_selection(self, value: str | None) -> None:
+        """Update the menu caption to reflect the selected value."""
+
+        if value == self.current_value:
+            return
+
+        self.current_value = value
+        if value:
+            caption = f"{self.label}：{value} ▼"
+        else:
+            caption = f"{self.label} ▼"
+
+        self.button.update_text(caption)
+        self.menu.set_current_selection(value)
+        self.menu.mark_dirty()
 
 
 @dataclass(slots=True)
@@ -56,65 +74,86 @@ def create_top_bar(surface: pygame.surface.Surface) -> TopBarControls:
     )
     title_label.rect.centery = top_area.centery
 
+    y_center = top_area.centery
+    x_cursor = title_label.rect.right + 32
+
     algorithm_bundle = _create_menu_bundle(
         surface=surface,
-        text="算法",
-        x=title_label.width + 70,
-        y=0,
-        options=(definition.label for definition in ALGORITHM_DEFINITIONS),
+        label="算法",
+        x=x_cursor,
+        y=y_center,
+        options=[definition.label for definition in ALGORITHM_DEFINITIONS],
     )
-    algorithm_bundle.button.rect.centery = top_area.centery
+    algorithm_bundle.button.rect.left = x_cursor
+    algorithm_bundle.button.rect.centery = y_center
+    algorithm_bundle.menu.mark_dirty()
+
+    x_cursor = algorithm_bundle.button.rect.right + 18
 
     speed_bundle = _create_menu_bundle(
         surface=surface,
-        text="速度",
-        x=algorithm_bundle.button.rect.right + 40,
-        y=0,
-        options=(speed.value for speed in SPEED_OPTIONS),
+        label="速度",
+        x=x_cursor,
+        y=y_center,
+        options=[speed.value for speed in SPEED_OPTIONS],
     )
-    speed_bundle.button.rect.centery = top_area.centery
-    speed_bundle.button.rect.y -= 15
+    speed_bundle.button.rect.left = x_cursor
+    speed_bundle.button.rect.centery = y_center
+    speed_bundle.menu.mark_dirty()
+
+    x_cursor = speed_bundle.button.rect.right + 24
 
     visualize_button = Button(
-        "开始可视化", "center", 0,
+        "开始可视化", 0, 0,
         background_color=pygame.Color(*GREEN),
         foreground_color=pygame.Color(*WHITE),
         padding=BUTTON_PADDING, font_size=BUTTON_FONT_SIZE, outline=BUTTON_OUTLINE,
         surface=surface,
     )
-    visualize_button.rect.centery = top_area.centery
+    visualize_button.rect.centery = y_center
+    visualize_button.rect.left = x_cursor
+
+    x_cursor = visualize_button.rect.right + 28
 
     comparison_button = Button(
-        "全部运行    ", 0, 0,
+        "比较模式", 0, 0,
         background_color=pygame.Color(*DARK_BLUE),
         foreground_color=pygame.Color(*WHITE),
         font_size=BUTTON_FONT_SIZE, outline=BUTTON_OUTLINE,
         surface=surface,
     )
-    comparison_button.rect.centery = top_area.centery
-    comparison_button.rect.left = visualize_button.rect.right + 50
+    comparison_button.rect.centery = y_center
+    comparison_button.rect.left = x_cursor
 
     comparison_bundle = _create_menu_bundle(
         surface=surface,
+        label="比较模式",
         button=comparison_button,
-        options=COMPARISON_OPTIONS,
+        options=list(COMPARISON_OPTIONS),
     )
+    comparison_bundle.menu.mark_dirty()
+
+    x_cursor = comparison_bundle.button.rect.right + 18
 
     generation_button = Button(
-        "生成迷宫", 0, 0,
+        "迷宫生成", 0, 0,
         background_color=pygame.Color(*DARK_BLUE),
         foreground_color=pygame.Color(*WHITE),
         font_size=BUTTON_FONT_SIZE, outline=BUTTON_OUTLINE,
         surface=surface,
     )
-    generation_button.rect.centery = top_area.centery
-    generation_button.rect.left = comparison_button.rect.right + 50
+    generation_button.rect.centery = y_center
+    generation_button.rect.left = x_cursor
 
     generation_bundle = _create_menu_bundle(
         surface=surface,
+        label="迷宫生成",
         button=generation_button,
-        options=GENERATION_OPTIONS,
+        options=list(GENERATION_OPTIONS),
     )
+    generation_bundle.menu.mark_dirty()
+
+    x_cursor = generation_bundle.button.rect.right + 18
 
     clear_button = Button(
         "清除墙体", 0, 0,
@@ -123,8 +162,14 @@ def create_top_bar(surface: pygame.surface.Surface) -> TopBarControls:
         padding=BUTTON_PADDING, font_size=BUTTON_FONT_SIZE, outline=BUTTON_OUTLINE,
         surface=surface,
     )
-    clear_button.rect.centery = top_area.centery
-    clear_button.rect.right = WIDTH - 20
+    clear_button.rect.centery = y_center
+    clear_button.rect.right = WIDTH - 24
+
+    # Adjust spacing if the clear button overlaps the toolbar actions.
+    overlap = generation_bundle.button.rect.right + 18 - clear_button.rect.left
+    if overlap > 0:
+        shift = overlap + 12
+        clear_button.rect.left += shift
 
     return TopBarControls(
         area=top_area,
@@ -140,7 +185,7 @@ def create_top_bar(surface: pygame.surface.Surface) -> TopBarControls:
 
 def _create_menu_bundle(
     surface: pygame.surface.Surface,
-    text: str | None = None,
+    label: str | None = None,
     x: float = 0,
     y: float = 0,
     button: Button | None = None,
@@ -148,9 +193,12 @@ def _create_menu_bundle(
 ) -> MenuBundle:
     """Create a menu bundle with the provided button label and options."""
 
+    base_label = label or (button.text.strip() if button else "")
+    caption = f"{base_label} ▼"
+
     menu_button = button or Button(
         surface=surface,
-        text=text or "",
+        text=caption,
         x=x,
         y=y,
         background_color=pygame.Color(*DARK_BLUE),
@@ -158,6 +206,11 @@ def _create_menu_bundle(
         font_size=BUTTON_FONT_SIZE,
         outline=BUTTON_OUTLINE,
     )
+
+    if button is not None:
+        menu_button.update_text(caption)
+        menu_button.rect.x = float(x)
+        menu_button.rect.y = float(y)
 
     option_buttons: list[Button] = [
         Button(
@@ -173,7 +226,10 @@ def _create_menu_bundle(
         for label in options
     ]
 
-    return MenuBundle(
+    bundle = MenuBundle(
         button=menu_button,
         menu=Menu(surface=surface, button=menu_button, children=option_buttons),
+        label=base_label,
     )
+    bundle.set_selection(None)
+    return bundle
