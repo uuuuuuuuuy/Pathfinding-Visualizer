@@ -59,6 +59,59 @@ class TopBarControls:
     visualize_button: Button
     clear_button: Button
 
+    def layout(self) -> None:
+        """Reflow toolbar controls based on their current text widths."""
+
+        y_center = self.area.centery
+        margin_left = 24
+        gap_after_title = 32
+        gap_between_menus = 18
+        gap_after_speed = 24
+        gap_after_visualize = 28
+
+        def place(widget: Button, gap: int) -> None:
+            nonlocal x_cursor
+            widget.rect.left = x_cursor
+            widget.rect.centery = y_center
+            if hasattr(widget, "text_rect"):
+                widget.text_rect.topleft = (
+                    widget.rect.x + widget.padding,
+                    widget.rect.y + widget.padding,
+                )
+            x_cursor = widget.rect.right + gap
+
+        x_cursor = margin_left
+
+        place(self.title, gap_after_title)
+
+        place(self.algorithm.button, gap_between_menus)
+        self.algorithm.menu.mark_dirty()
+
+        place(self.speed.button, gap_after_speed)
+        self.speed.menu.mark_dirty()
+
+        place(self.visualize_button, gap_after_visualize)
+
+        place(self.comparison.button, gap_between_menus)
+        self.comparison.menu.mark_dirty()
+
+        place(self.generation.button, gap_between_menus)
+        self.generation.menu.mark_dirty()
+
+        clear_gap = 24
+        self.clear_button.rect.left = x_cursor + clear_gap
+        self.clear_button.rect.centery = y_center
+        max_right = self.area.right - clear_gap
+        if self.clear_button.rect.right > max_right:
+            shift = self.clear_button.rect.right - max_right
+            self.clear_button.rect.x -= shift
+            self.clear_button.rect.centery = y_center
+        if hasattr(self.clear_button, "text_rect"):
+            self.clear_button.text_rect.topleft = (
+                self.clear_button.rect.x + self.clear_button.padding,
+                self.clear_button.rect.y + self.clear_button.padding,
+            )
+
 
 def create_top_bar(surface: pygame.surface.Surface) -> TopBarControls:
     """Create and position all controls displayed in the top toolbar."""
@@ -84,10 +137,6 @@ def create_top_bar(surface: pygame.surface.Surface) -> TopBarControls:
         y=y_center,
         options=[definition.label for definition in ALGORITHM_DEFINITIONS],
     )
-    algorithm_bundle.button.rect.left = x_cursor
-    algorithm_bundle.button.rect.centery = y_center
-    algorithm_bundle.menu.mark_dirty()
-
     x_cursor = algorithm_bundle.button.rect.right + 18
 
     speed_bundle = _create_menu_bundle(
@@ -97,10 +146,6 @@ def create_top_bar(surface: pygame.surface.Surface) -> TopBarControls:
         y=y_center,
         options=[speed.value for speed in SPEED_OPTIONS],
     )
-    speed_bundle.button.rect.left = x_cursor
-    speed_bundle.button.rect.centery = y_center
-    speed_bundle.menu.mark_dirty()
-
     x_cursor = speed_bundle.button.rect.right + 24
 
     visualize_button = Button(
@@ -110,9 +155,6 @@ def create_top_bar(surface: pygame.surface.Surface) -> TopBarControls:
         padding=BUTTON_PADDING, font_size=BUTTON_FONT_SIZE, outline=BUTTON_OUTLINE,
         surface=surface,
     )
-    visualize_button.rect.centery = y_center
-    visualize_button.rect.left = x_cursor
-
     x_cursor = visualize_button.rect.right + 28
 
     comparison_button = Button(
@@ -122,17 +164,12 @@ def create_top_bar(surface: pygame.surface.Surface) -> TopBarControls:
         font_size=BUTTON_FONT_SIZE, outline=BUTTON_OUTLINE,
         surface=surface,
     )
-    comparison_button.rect.centery = y_center
-    comparison_button.rect.left = x_cursor
-
     comparison_bundle = _create_menu_bundle(
         surface=surface,
         label="比较模式",
         button=comparison_button,
         options=list(COMPARISON_OPTIONS),
     )
-    comparison_bundle.menu.mark_dirty()
-
     x_cursor = comparison_bundle.button.rect.right + 18
 
     generation_button = Button(
@@ -142,17 +179,12 @@ def create_top_bar(surface: pygame.surface.Surface) -> TopBarControls:
         font_size=BUTTON_FONT_SIZE, outline=BUTTON_OUTLINE,
         surface=surface,
     )
-    generation_button.rect.centery = y_center
-    generation_button.rect.left = x_cursor
-
     generation_bundle = _create_menu_bundle(
         surface=surface,
         label="迷宫生成",
         button=generation_button,
         options=list(GENERATION_OPTIONS),
     )
-    generation_bundle.menu.mark_dirty()
-
     x_cursor = generation_bundle.button.rect.right + 18
 
     clear_button = Button(
@@ -162,16 +194,7 @@ def create_top_bar(surface: pygame.surface.Surface) -> TopBarControls:
         padding=BUTTON_PADDING, font_size=BUTTON_FONT_SIZE, outline=BUTTON_OUTLINE,
         surface=surface,
     )
-    clear_button.rect.centery = y_center
-    clear_button.rect.right = WIDTH - 24
-
-    # Adjust spacing if the clear button overlaps the toolbar actions.
-    overlap = generation_bundle.button.rect.right + 18 - clear_button.rect.left
-    if overlap > 0:
-        shift = overlap + 12
-        clear_button.rect.left += shift
-
-    return TopBarControls(
+    controls = TopBarControls(
         area=top_area,
         title=title_label,
         algorithm=algorithm_bundle,
@@ -181,6 +204,10 @@ def create_top_bar(surface: pygame.surface.Surface) -> TopBarControls:
         visualize_button=visualize_button,
         clear_button=clear_button,
     )
+
+    controls.layout()
+
+    return controls
 
 
 def _create_menu_bundle(

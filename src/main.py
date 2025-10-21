@@ -294,6 +294,18 @@ def get_pressed() -> tuple[bool, int | None]:
 def draw() -> None:
     """Draw things (except Visualise button)
     """
+    top_controls.layout()
+
+    if state.speed_label:
+        state.speed_label.rect.midtop = (
+            speed_button.rect.centerx,
+            speed_button.rect.bottom + 6,
+        )
+        state.speed_label.text_rect.topleft = (
+            state.speed_label.rect.x + state.speed_label.padding,
+            state.speed_label.rect.y + state.speed_label.padding,
+        )
+
     # Fill white, draw top background and title text
     WINDOW.fill(WHITE)
     pygame.draw.rect(WINDOW, DARK_BLUE, top)
@@ -389,7 +401,14 @@ def draw() -> None:
                 foreground_color=pygame.Color(*WHITE),
                 background_color=pygame.Color(*BLUE_2),
             )
-            state.speed_label.rect.centerx = speed_button.rect.centerx
+            state.speed_label.rect.midtop = (
+                speed_button.rect.centerx,
+                speed_button.rect.bottom + 6,
+            )
+            state.speed_label.text_rect.topleft = (
+                state.speed_label.rect.x + state.speed_label.padding,
+                state.speed_label.rect.y + state.speed_label.padding,
+            )
             maze.set_speed(SpeedSetting(speed_menu.selected.text))
             speed_bundle.set_selection(speed_menu.selected.text)
             state.overlay = False
@@ -505,8 +524,10 @@ def run_single(idx: int) -> None:
     def callback():
         state.done_visualising = True
         state.label = Label(
-            f"{definition.label} 共探索 {solution.explored_length} 步，",
-            f"耗时 {solution.time:.2f} 毫秒", "center", 0,
+            (
+                f"{definition.label} 共探索 {solution.explored_length} 步，"
+                f"耗时 {solution.time:.2f} 毫秒"
+            ), "center", 0,
             background_color=pygame.Color(*WHITE),
             foreground_color=pygame.Color(*DARK),
             padding=6, font_size=20, outline=False,
