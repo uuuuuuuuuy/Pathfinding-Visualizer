@@ -172,6 +172,8 @@ DARK_BLUE = (52, 73, 94)
 BLUE_2 = (81, 145, 228)
 DARK_BLUE_2 = (44, 67, 208)
 PURPLE = (17, 104, 217)
+ORANGE = (243, 156, 18)
+RED = (231, 76, 60)
 
 # Window Dimensions
 WINDOW_INFO = pygame.display.Info()

@@ -80,16 +80,22 @@ maze.animator = animator
 maze.generator = maze_generator
 
 
-def main() -> None:
-    """Start here"""
+def set_status(message: str) -> None:
+    """Update the status banner displayed beneath the legend."""
+
     state.label = Label(
-        "请选择算法", "center", 0,
+        message, "center", 0,
         background_color=pygame.Color(*WHITE),
         foreground_color=pygame.Color(*DARK),
         padding=6, font_size=20, outline=False,
         surface=WINDOW,
     )
     state.label.rect.bottom = HEADER_HEIGHT - 10
+
+
+def main() -> None:
+    """Start here"""
+    set_status("状态：请选择算法并点击“开始可视化”")
 
     speed_bundle.set_selection(SpeedSetting.FAST.value)
     maze.set_speed(SpeedSetting.FAST)
@@ -360,14 +366,7 @@ def draw() -> None:
             ]
             algorithm_bundle.set_selection(algorithm_menu.selected.text)
             selection_summary.set_value("algorithm", algorithm_menu.selected.text)
-            state.label = Label(
-                state.current_algorithm.label, "center", 0,
-                background_color=pygame.Color(*WHITE),
-                foreground_color=pygame.Color(*DARK),
-                padding=6, font_size=20, outline=False,
-                surface=WINDOW,
-            )
-            state.label.rect.bottom = HEADER_HEIGHT - 10
+            set_status("状态：算法已选择，点击“开始可视化”开始演示")
 
             if state.done_visualising:
                 instant_algorithm(maze, state.current_algorithm)
@@ -461,14 +460,7 @@ def draw() -> None:
 
             def callback():
                 state.overlay = False
-                state.label = Label(
-                    f"{text}", "center", 0,
-                    background_color=pygame.Color(*WHITE),
-                    foreground_color=pygame.Color(*DARK),
-                    padding=6, font_size=20, outline=False,
-                    surface=WINDOW,
-                )
-                state.label.rect.bottom = HEADER_HEIGHT - 10
+                set_status(text)
                 selection_summary.set_value("generation", selected_generation)
 
             maze.generate_maze(
@@ -485,14 +477,7 @@ def draw() -> None:
             else:
                 new_text = f"正在使用 {algorithm} 生成迷宫"
 
-            state.label = Label(
-                new_text, "center", 0,
-                background_color=pygame.Color(*WHITE),
-                foreground_color=pygame.Color(*DARK),
-                padding=6, font_size=20, outline=False,
-                surface=WINDOW,
-            )
-            state.label.rect.bottom = HEADER_HEIGHT - 10
+            set_status(new_text)
 
     if state.results_popup:
         state.overlay = True
@@ -527,14 +512,7 @@ def reset_simulation() -> None:
     state.results_popup = None
     state.current_algorithm = None
 
-    state.label = Label(
-        "请选择算法", "center", 0,
-        background_color=pygame.Color(*WHITE),
-        foreground_color=pygame.Color(*DARK),
-        padding=6, font_size=20, outline=False,
-        surface=WINDOW,
-    )
-    state.label.rect.bottom = HEADER_HEIGHT - 10
+    set_status("状态：请选择算法并点击“开始可视化”")
 
     algorithm_bundle.set_selection(None)
     speed_bundle.set_selection(SpeedSetting.FAST.value)
@@ -558,31 +536,16 @@ def run_single(idx: int) -> None:
     state.current_algorithm = definition
     solution = maze.solve(definition.search)
 
-    def callback():
+    def callback() -> None:
         state.done_visualising = True
-        state.label = Label(
-            (
-                f"{definition.label} 共探索 {solution.explored_length} 步，"
-                f"耗时 {solution.time:.2f} 毫秒"
-            ), "center", 0,
-            background_color=pygame.Color(*WHITE),
-            foreground_color=pygame.Color(*DARK),
-            padding=6, font_size=20, outline=False,
-            surface=WINDOW,
+        set_status(
+            f"{definition.label} 共探索 {solution.explored_length} 步，耗时 {solution.time:.2f} 毫秒"
         )
-        state.label.rect.bottom = HEADER_HEIGHT - 10
         state.overlay = False
 
     maze.visualize(solution=solution, after_animation=callback)
 
-    state.label = Label(
-        f"正在运行 {definition.label}", "center", 0,
-        background_color=pygame.Color(*WHITE),
-        foreground_color=pygame.Color(*DARK),
-        padding=6, font_size=20, outline=False,
-        surface=WINDOW,
-    )
-    state.label.rect.bottom = HEADER_HEIGHT - 10
+    set_status(f"正在运行 {definition.label}")
 
 
 def run_all(algo_idx: int, maze_idx: int = -1) -> None:
@@ -615,23 +578,9 @@ def run_all(algo_idx: int, maze_idx: int = -1) -> None:
             else:
                 new_text = f"正在使用 {algorithm} 生成迷宫"
 
-            state.label = Label(
-                new_text, "center", 0,
-                background_color=pygame.Color(*WHITE),
-                foreground_color=pygame.Color(*DARK),
-                padding=6, font_size=20, outline=False,
-                surface=WINDOW,
-            )
-            state.label.rect.bottom = HEADER_HEIGHT - 10
+            set_status(new_text)
         else:
-            state.label = Label(
-                definition.label, "center", 0,
-                background_color=pygame.Color(*WHITE),
-                foreground_color=pygame.Color(*DARK),
-                padding=6, font_size=20, outline=False,
-                surface=WINDOW,
-            )
-            state.label.rect.bottom = HEADER_HEIGHT - 10
+            set_status("比较完成，查看结果表获取详细数据")
 
             results = list(state.results.items())
 
@@ -660,14 +609,7 @@ def run_all(algo_idx: int, maze_idx: int = -1) -> None:
 
     maze.visualize(solution=solution, after_animation=callback)
 
-    state.label = Label(
-        f"正在运行 {definition.label}", "center", 0,
-        background_color=pygame.Color(*WHITE),
-        foreground_color=pygame.Color(*DARK),
-        padding=6, font_size=20, outline=False,
-        surface=WINDOW,
-    )
-    state.label.rect.bottom = HEADER_HEIGHT - 10
+    set_status(f"正在运行 {definition.label}")
 
 
 def show_results(results: list[tuple[str, dict[str, float]]]) -> None:

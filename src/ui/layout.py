@@ -5,7 +5,7 @@ from typing import Iterable
 
 import pygame
 
-from ..constants import DARK, DARK_BLUE, GREEN, WHITE, WIDTH
+from ..constants import DARK, DARK_BLUE, GREEN, ORANGE, RED, WHITE, WIDTH
 from ..widgets import Button, Label, Menu
 from ..menu_config import (
     ALGORITHM_DEFINITIONS,
@@ -39,7 +39,7 @@ class MenuBundle:
             return
 
         self.current_value = value
-        self.button.update_text(f"{self.label} ▼")
+        self.button.update_text(self.label)
         self.menu.set_current_selection(value)
         self.menu.mark_dirty()
 
@@ -110,51 +110,70 @@ class TopBarControls:
 
         y_center = self.area.centery
         margin_left = 24
-        gap_after_title = 32
-        gap_between_menus = 18
-        gap_after_speed = 24
-        gap_after_visualize = 20
-        gap_after_pause = 18
-        gap_after_reset = 28
+        margin_right = 24
+        gap_after_title = 28
+        gap_between_menus = 16
+        grouped_gap = 14
+        cluster_gap = 22
 
-        def place(widget: Button, gap: int) -> None:
-            nonlocal x_cursor
-            widget.rect.left = x_cursor
-            widget.rect.centery = y_center
+        def sync(widget: Button) -> None:
             if hasattr(widget, "text_rect"):
                 widget.text_rect.topleft = (
                     widget.rect.x + widget.padding,
                     widget.rect.y + widget.padding,
                 )
-            x_cursor = widget.rect.right + gap
 
-        x_cursor = margin_left
+        left_cursor = margin_left
 
-        place(self.title, gap_after_title)
+        def place_left(widget: Button, gap: int) -> None:
+            nonlocal left_cursor
+            widget.rect.left = left_cursor
+            widget.rect.centery = y_center
+            sync(widget)
+            left_cursor = widget.rect.right + gap
 
-        place(self.algorithm.button, gap_between_menus)
+        right_cursor = self.area.right - margin_right
+
+        def place_right(widget: Button, gap: int) -> None:
+            nonlocal right_cursor
+            widget.rect.right = right_cursor
+            widget.rect.centery = y_center
+            sync(widget)
+            right_cursor = widget.rect.left - gap
+
+        place_left(self.title, gap_after_title)
+
+        place_left(self.algorithm.button, gap_between_menus)
         self.algorithm.menu.mark_dirty()
 
-        place(self.speed.button, gap_after_speed)
+        place_left(self.speed.button, gap_between_menus)
         self.speed.menu.mark_dirty()
 
-        place(self.visualize_button, gap_after_visualize)
-
-        place(self.pause_button, gap_after_pause)
-
-        place(self.reset_button, gap_after_reset)
-
-        place(self.comparison.button, gap_between_menus)
+        place_left(self.comparison.button, gap_between_menus)
         self.comparison.menu.mark_dirty()
 
-        place(self.generation.button, gap_between_menus)
+        place_left(self.generation.button, gap_between_menus)
         self.generation.menu.mark_dirty()
 
-        if hasattr(self.reset_button, "text_rect"):
-            self.reset_button.text_rect.topleft = (
-                self.reset_button.rect.x + self.reset_button.padding,
-                self.reset_button.rect.y + self.reset_button.padding,
-            )
+        place_right(self.reset_button, grouped_gap)
+        place_right(self.pause_button, grouped_gap)
+        place_right(self.visualize_button, cluster_gap)
+
+        # Prevent overlap when the window is too narrow by nudging the menu group left.
+        if left_cursor > right_cursor:
+            shift = left_cursor - right_cursor
+            min_gap = self.algorithm.button.rect.left - (self.title.rect.right + 8)
+            max_shift = max(0, min_gap)
+            shift = min(shift, max_shift)
+
+            if shift:
+                for bundle in (self.generation, self.comparison, self.speed, self.algorithm):
+                    bundle.button.rect.x -= shift
+                    sync(bundle.button)
+                    bundle.menu.mark_dirty()
+
+            self.title.rect.x = margin_left
+            sync(self.title)
 
 
 def create_top_bar(surface: pygame.surface.Surface) -> TopBarControls:
@@ -163,34 +182,36 @@ def create_top_bar(surface: pygame.surface.Surface) -> TopBarControls:
     top_area = pygame.Rect(0, 0, WIDTH, TOP_BAR_HEIGHT)
 
     title_label = Label(
-        "寻路算法可视化器", 20, 0,
+        "寻路算法可视化器", 0, 0,
         background_color=pygame.Color(*DARK_BLUE),
         foreground_color=pygame.Color(*WHITE),
         padding=BUTTON_PADDING, font_size=BUTTON_FONT_SIZE, bold=True,
         surface=surface,
     )
-    title_label.rect.centery = top_area.centery
-
-    y_center = top_area.centery
-    x_cursor = title_label.rect.right + 32
 
     algorithm_bundle = _create_menu_bundle(
         surface=surface,
         label="算法",
-        x=x_cursor,
-        y=y_center,
         options=[definition.label for definition in ALGORITHM_DEFINITIONS],
     )
-    x_cursor = algorithm_bundle.button.rect.right + 18
 
     speed_bundle = _create_menu_bundle(
         surface=surface,
         label="速度",
-        x=x_cursor,
-        y=y_center,
         options=[speed.value for speed in SPEED_OPTIONS],
     )
-    x_cursor = speed_bundle.button.rect.right + 24
+
+    comparison_bundle = _create_menu_bundle(
+        surface=surface,
+        label="比较模式",
+        options=list(COMPARISON_OPTIONS),
+    )
+
+    generation_bundle = _create_menu_bundle(
+        surface=surface,
+        label="迷宫生成",
+        options=list(GENERATION_OPTIONS),
+    )
 
     visualize_button = Button(
         "开始可视化", 0, 0,
@@ -199,53 +220,21 @@ def create_top_bar(surface: pygame.surface.Surface) -> TopBarControls:
         padding=BUTTON_PADDING, font_size=BUTTON_FONT_SIZE, outline=BUTTON_OUTLINE,
         surface=surface,
     )
-    x_cursor = visualize_button.rect.right + 28
 
     pause_button = Button(
         "暂停动画", 0, 0,
-        background_color=pygame.Color(*DARK_BLUE),
+        background_color=pygame.Color(*ORANGE),
         foreground_color=pygame.Color(*WHITE),
         padding=BUTTON_PADDING, font_size=BUTTON_FONT_SIZE, outline=BUTTON_OUTLINE,
         surface=surface,
     )
-    x_cursor = pause_button.rect.right + 18
 
     reset_button = Button(
         "重新开始", 0, 0,
-        background_color=pygame.Color(*DARK_BLUE),
+        background_color=pygame.Color(*RED),
         foreground_color=pygame.Color(*WHITE),
         padding=BUTTON_PADDING, font_size=BUTTON_FONT_SIZE, outline=BUTTON_OUTLINE,
         surface=surface,
-    )
-    x_cursor = reset_button.rect.right + 24
-
-    comparison_button = Button(
-        "比较模式", 0, 0,
-        background_color=pygame.Color(*DARK_BLUE),
-        foreground_color=pygame.Color(*WHITE),
-        font_size=BUTTON_FONT_SIZE, outline=BUTTON_OUTLINE,
-        surface=surface,
-    )
-    comparison_bundle = _create_menu_bundle(
-        surface=surface,
-        label="比较模式",
-        button=comparison_button,
-        options=list(COMPARISON_OPTIONS),
-    )
-    x_cursor = comparison_bundle.button.rect.right + 18
-
-    generation_button = Button(
-        "迷宫生成", 0, 0,
-        background_color=pygame.Color(*DARK_BLUE),
-        foreground_color=pygame.Color(*WHITE),
-        font_size=BUTTON_FONT_SIZE, outline=BUTTON_OUTLINE,
-        surface=surface,
-    )
-    generation_bundle = _create_menu_bundle(
-        surface=surface,
-        label="迷宫生成",
-        button=generation_button,
-        options=list(GENERATION_OPTIONS),
     )
     controls = TopBarControls(
         area=top_area,
@@ -315,13 +304,14 @@ def _create_menu_bundle(
     """Create a menu bundle with the provided button label and options."""
 
     base_label = label or (button.text.strip() if button else "")
-    caption = f"{base_label} ▼"
+    caption = base_label
 
     menu_button = button or Button(
         surface=surface,
         text=caption,
         x=x,
         y=y,
+        padding=BUTTON_PADDING,
         background_color=pygame.Color(*DARK_BLUE),
         foreground_color=pygame.Color(*WHITE),
         font_size=BUTTON_FONT_SIZE,
@@ -339,6 +329,7 @@ def _create_menu_bundle(
             text=label,
             x=0,
             y=0,
+            padding=BUTTON_PADDING,
             background_color=pygame.Color(*DARK_BLUE),
             foreground_color=pygame.Color(*WHITE),
             font_size=BUTTON_FONT_SIZE,
