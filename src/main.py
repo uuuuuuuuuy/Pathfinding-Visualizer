@@ -25,7 +25,6 @@ from .constants import (
     GRAY,
     GREEN,
     GREEN_2,
-    HEADER_HEIGHT,
     BLUE_2,
     MIN_SIZE,
     WHITE,
@@ -70,6 +69,7 @@ reset_button = top_controls.reset_button
 
 selection_summary = create_selection_summary(WINDOW)
 summary_area = selection_summary.area
+status_area = pygame.Rect(40, summary_area.bottom + 8, WIDTH - 80, 44)
 
 # Instantiate Maze and Animator
 state = State()
@@ -81,16 +81,20 @@ maze.generator = maze_generator
 
 
 def set_status(message: str) -> None:
-    """Update the status banner displayed beneath the legend."""
+    """Update the status banner displayed beneath the toolbar summary."""
 
     state.label = Label(
         message, "center", 0,
         background_color=pygame.Color(*WHITE),
         foreground_color=pygame.Color(*DARK),
-        padding=6, font_size=20, outline=False,
+        padding=8, font_size=20, outline=False,
         surface=WINDOW,
     )
-    state.label.rect.bottom = HEADER_HEIGHT - 10
+    state.label.rect.center = status_area.center
+    state.label.text_rect.topleft = (
+        state.label.rect.x + state.label.padding,
+        state.label.rect.y + state.label.padding,
+    )
 
 
 def main() -> None:
@@ -309,50 +313,47 @@ def draw() -> None:
     for field in selection_summary.values():
         field.label.draw()
 
-    # Draw maze legend
-    texts = {
-        "起点节点": WHITE,
-        "访问过的节点": BLUE,
-        "最短路径节点": YELLOW,
-        "未访问的节点": WHITE,
-        "墙体节点": DARK,
-        "权重节点": WHITE,
-        "目标节点": WHITE,
-    }
-
-    x = 50
-    y = summary_area.bottom + 20
-    for text in texts:
-        # Rectangle (Symbol)
-        pygame.draw.rect(WINDOW, texts[text], (x, y, 30, 30))
-        pygame.draw.rect(WINDOW, GRAY, (x, y, 30, 30), width=1)
-
-        # Text (Meaning)
-        text_surf = FONT_18.render(text, True, DARK)
-        text_rect = text_surf.get_rect()
-        text_rect.centery = y + 30 // 2
-
-        WINDOW.blit(text_surf, (x + 30 + 10, text_rect.y))
-
-        # Formating
-        if texts[text] == DARK:
-            y += text_surf.get_height() + 30
-        elif text != "权重节点":
-            x += 30 + 10 + text_surf.get_width() + 75
-
-        # Draw images for weighted, start and target node
-        if text == "权重节点":
-            WINDOW.blit(WEIGHT, (x + 3, y + 3))
-            x = 50
-        elif text == "起点节点":
-            image_rect = START.get_rect(center=(65, top.bottom + 35))
-            WINDOW.blit(START, image_rect)
-        elif text == "目标节点":
-            image_rect = GOAL.get_rect(center=(65, y + 15))
-            WINDOW.blit(GOAL, image_rect)
-
-    # Draw algo label
+    pygame.draw.rect(WINDOW, WHITE, status_area)
+    state.label.rect.center = status_area.center
+    state.label.text_rect.topleft = (
+        state.label.rect.x + state.label.padding,
+        state.label.rect.y + state.label.padding,
+    )
     state.label.draw()
+
+    legend_items = [
+        ("起点节点", WHITE, START),
+        ("目标节点", WHITE, GOAL),
+        ("访问过的节点", BLUE, None),
+        ("未访问的节点", WHITE, None),
+        ("墙体节点", DARK, None),
+        ("最短路径节点", YELLOW, None),
+        ("权重节点", WHITE, WEIGHT),
+    ]
+
+    legend_x = 50
+    legend_y = status_area.bottom + 16
+    legend_padding = 70
+    legend_row_height = 30 + FONT_18.get_height()
+
+    for label, color, icon in legend_items:
+        icon_rect = pygame.Rect(legend_x, legend_y, 30, 30)
+        pygame.draw.rect(WINDOW, color, icon_rect)
+        pygame.draw.rect(WINDOW, GRAY, icon_rect, width=1)
+
+        if icon:
+            asset_rect = icon.get_rect(center=icon_rect.center)
+            WINDOW.blit(icon, asset_rect)
+
+        text_surf = FONT_18.render(label, True, DARK)
+        text_rect = text_surf.get_rect()
+        text_rect.midleft = (icon_rect.right + 10, icon_rect.centery)
+        WINDOW.blit(text_surf, text_rect)
+
+        legend_x = text_rect.right + legend_padding
+        if legend_x + 30 > WIDTH - 40:
+            legend_x = 50
+            legend_y += legend_row_height
 
     maze.draw()
 
