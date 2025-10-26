@@ -321,39 +321,75 @@ def draw() -> None:
     )
     state.label.draw()
 
-    legend_items = [
-        ("起点节点", WHITE, START),
-        ("目标节点", WHITE, GOAL),
-        ("访问过的节点", BLUE, None),
-        ("未访问的节点", WHITE, None),
-        ("墙体节点", DARK, None),
-        ("最短路径节点", YELLOW, None),
-        ("权重节点", WHITE, WEIGHT),
+    legend_sections = [
+        (
+            "节点类型",
+            [
+                ("迷宫节点", WHITE, None),
+                ("障碍物节点", DARK, None),
+                ("权重节点", WHITE, WEIGHT),
+            ],
+        ),
+        (
+            "搜索状态",
+            [
+                ("起点节点", WHITE, START),
+                ("目标节点", WHITE, GOAL),
+                ("访问过的节点", BLUE, None),
+                ("最短路径节点", YELLOW, None),
+            ],
+        ),
     ]
 
-    legend_x = 50
+    legend_left = 50
+    legend_right = WIDTH - 40
     legend_y = status_area.bottom + 16
-    legend_padding = 70
-    legend_row_height = 30 + FONT_18.get_height()
+    icon_size = 30
+    legend_padding = 60
+    row_gap = 18
 
-    for label, color, icon in legend_items:
-        icon_rect = pygame.Rect(legend_x, legend_y, 30, 30)
-        pygame.draw.rect(WINDOW, color, icon_rect)
-        pygame.draw.rect(WINDOW, GRAY, icon_rect, width=1)
+    for heading, items in legend_sections:
+        heading_surf = FONT_18.render(heading, True, DARK_BLUE)
+        heading_rect = heading_surf.get_rect()
+        heading_rect.topleft = (legend_left, legend_y)
+        WINDOW.blit(heading_surf, heading_rect)
 
-        if icon:
-            asset_rect = icon.get_rect(center=icon_rect.center)
-            WINDOW.blit(icon, asset_rect)
+        legend_y += heading_rect.height + 8
+        legend_x = legend_left
+        max_row_height = 0
 
-        text_surf = FONT_18.render(label, True, DARK)
-        text_rect = text_surf.get_rect()
-        text_rect.midleft = (icon_rect.right + 10, icon_rect.centery)
-        WINDOW.blit(text_surf, text_rect)
+        for label, color, icon in items:
+            icon_rect = pygame.Rect(legend_x, legend_y, icon_size, icon_size)
+            pygame.draw.rect(WINDOW, color, icon_rect)
+            pygame.draw.rect(WINDOW, GRAY, icon_rect, width=1)
 
-        legend_x = text_rect.right + legend_padding
-        if legend_x + 30 > WIDTH - 40:
-            legend_x = 50
-            legend_y += legend_row_height
+            if icon:
+                asset_rect = icon.get_rect(center=icon_rect.center)
+                WINDOW.blit(icon, asset_rect)
+
+            text_surf = FONT_18.render(label, True, DARK)
+            text_rect = text_surf.get_rect()
+            text_rect.midleft = (icon_rect.right + 10, icon_rect.centery)
+            WINDOW.blit(text_surf, text_rect)
+
+            item_height = max(icon_rect.height, text_rect.height)
+            max_row_height = max(max_row_height, item_height)
+
+            legend_x = text_rect.right + legend_padding
+
+            if legend_x + icon_size > legend_right:
+                legend_x = legend_left
+                legend_y += max_row_height + row_gap
+                max_row_height = 0
+
+        legend_y += max_row_height + row_gap
+
+    weight_hint = FONT_18.render(
+        "提示：按数字键 2-9 并拖拽鼠标可放置不同权重节点", True, DARK
+    )
+    hint_rect = weight_hint.get_rect()
+    hint_rect.topleft = (legend_left, legend_y)
+    WINDOW.blit(weight_hint, hint_rect)
 
     maze.draw()
 
