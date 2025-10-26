@@ -70,7 +70,7 @@ reset_button = top_controls.reset_button
 
 selection_summary = create_selection_summary(WINDOW)
 summary_area = selection_summary.area
-status_area = pygame.Rect(32, summary_area.bottom + 6, WIDTH - 64, 36)
+status_area = pygame.Rect(32, summary_area.bottom + 6, WIDTH - 64, 30)
 
 # Instantiate Maze and Animator
 state = State()
@@ -88,7 +88,7 @@ def set_status(message: str) -> None:
         message, "center", 0,
         background_color=pygame.Color(*WHITE),
         foreground_color=pygame.Color(*DARK),
-        padding=6, font_size=16, outline=False,
+        padding=5, font_size=15, outline=False,
         surface=WINDOW,
     )
     state.label.rect.center = status_area.center
