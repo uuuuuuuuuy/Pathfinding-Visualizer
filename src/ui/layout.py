@@ -14,13 +14,13 @@ from ..menu_config import (
     SPEED_OPTIONS,
 )
 
-TOP_BAR_HEIGHT = 80
-BUTTON_FONT_SIZE = 20
+TOP_BAR_HEIGHT = 68
+BUTTON_FONT_SIZE = 18
 BUTTON_PADDING = 6
 BUTTON_OUTLINE = False
-SUMMARY_HEIGHT = 56
-SUMMARY_PADDING = 10
-SUMMARY_GAP = 20
+SUMMARY_HEIGHT = 44
+SUMMARY_PADDING = 6
+SUMMARY_GAP = 16
 
 
 @dataclass(slots=True)
@@ -111,10 +111,10 @@ class TopBarControls:
         y_center = self.area.centery
         margin_left = 24
         margin_right = 24
-        gap_after_title = 28
-        gap_between_menus = 16
-        grouped_gap = 14
-        cluster_gap = 22
+        gap_after_title = 24
+        gap_between_menus = 12
+        grouped_gap = 12
+        cluster_gap = 18
 
         def sync(widget: Button) -> None:
             if hasattr(widget, "text_rect"):
@@ -272,7 +272,7 @@ def create_selection_summary(surface: pygame.surface.Surface) -> SelectionSummar
             0,
             0,
             padding=SUMMARY_PADDING,
-            font_size=18,
+            font_size=16,
             background_color=pygame.Color(*WHITE),
             foreground_color=pygame.Color(*DARK),
             surface=surface,

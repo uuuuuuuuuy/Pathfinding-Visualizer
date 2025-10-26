@@ -180,10 +180,9 @@ WINDOW_INFO = pygame.display.Info()
 SCREEN_WIDTH, SCREEN_HEIGHT = WINDOW_INFO.current_w, WINDOW_INFO.current_h
 WIDTH = 1280 if SCREEN_WIDTH >= 1280 else SCREEN_WIDTH - 150
 HEIGHT = 900 if SCREEN_HEIGHT >= 900 else SCREEN_HEIGHT - 150
-# Reserve additional vertical space above the maze so the toolbar, selection
-# summary, status banner, and legend never overlap with the grid drawing area.
-# The legend can grow with localisation, so allocate a generous margin.
-HEADER_HEIGHT = 420
+# Reserve vertical space for the compact toolbar, summary, status banner, and
+# legend so they sit above the maze without overlapping.
+HEADER_HEIGHT = 260
 
 # Maze
 CELL_SIZE = 26

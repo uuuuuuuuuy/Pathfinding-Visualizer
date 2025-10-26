@@ -21,6 +21,7 @@ from .constants import (
     CLOCK,
     DARK,
     DARK_BLUE,
+    FONT_14,
     FONT_18,
     GRAY,
     GREEN,
@@ -69,7 +70,7 @@ reset_button = top_controls.reset_button
 
 selection_summary = create_selection_summary(WINDOW)
 summary_area = selection_summary.area
-status_area = pygame.Rect(40, summary_area.bottom + 8, WIDTH - 80, 44)
+status_area = pygame.Rect(32, summary_area.bottom + 6, WIDTH - 64, 36)
 
 # Instantiate Maze and Animator
 state = State()
@@ -87,7 +88,7 @@ def set_status(message: str) -> None:
         message, "center", 0,
         background_color=pygame.Color(*WHITE),
         foreground_color=pygame.Color(*DARK),
-        padding=8, font_size=20, outline=False,
+        padding=6, font_size=16, outline=False,
         surface=WINDOW,
     )
     state.label.rect.center = status_area.center
@@ -341,24 +342,42 @@ def draw() -> None:
         ),
     ]
 
-    legend_left = 50
-    legend_right = WIDTH - 40
-    legend_y = status_area.bottom + 16
-    icon_size = 30
-    legend_padding = 60
-    row_gap = 18
+    legend_left = 32
+    legend_right = WIDTH - 32
+    legend_top = status_area.bottom + 10
+    icon_size = 20
+    row_gap = 10
+    item_gap = 18
+    heading_gap = 10
+    group_gap = 24
+
+    legend_x = legend_left
+    legend_y = legend_top
+    max_row_height = icon_size
 
     for heading, items in legend_sections:
-        heading_surf = FONT_18.render(heading, True, DARK_BLUE)
+        heading_text = f"{heading}："
+        heading_surf = FONT_14.render(heading_text, True, DARK_BLUE)
         heading_rect = heading_surf.get_rect()
-        heading_rect.topleft = (legend_left, legend_y)
-        WINDOW.blit(heading_surf, heading_rect)
+        heading_rect.centery = legend_y + icon_size // 2
+        heading_rect.left = legend_x
 
-        legend_y += heading_rect.height + 8
-        legend_x = legend_left
-        max_row_height = 0
+        if heading_rect.right > legend_right:
+            legend_x = legend_left
+            legend_y += max_row_height + row_gap
+            max_row_height = icon_size
+            heading_rect.left = legend_x
+            heading_rect.centery = legend_y + icon_size // 2
+
+        WINDOW.blit(heading_surf, heading_rect)
+        legend_x = heading_rect.right + heading_gap
 
         for label, color, icon in items:
+            if legend_x + icon_size > legend_right:
+                legend_x = legend_left
+                legend_y += max_row_height + row_gap
+                max_row_height = icon_size
+
             icon_rect = pygame.Rect(legend_x, legend_y, icon_size, icon_size)
             pygame.draw.rect(WINDOW, color, icon_rect)
             pygame.draw.rect(WINDOW, GRAY, icon_rect, width=1)
@@ -367,24 +386,20 @@ def draw() -> None:
                 asset_rect = icon.get_rect(center=icon_rect.center)
                 WINDOW.blit(icon, asset_rect)
 
-            text_surf = FONT_18.render(label, True, DARK)
+            text_surf = FONT_14.render(label, True, DARK)
             text_rect = text_surf.get_rect()
-            text_rect.midleft = (icon_rect.right + 10, icon_rect.centery)
+            text_rect.midleft = (icon_rect.right + 6, icon_rect.centery)
             WINDOW.blit(text_surf, text_rect)
 
             item_height = max(icon_rect.height, text_rect.height)
             max_row_height = max(max_row_height, item_height)
+            legend_x = text_rect.right + item_gap
 
-            legend_x = text_rect.right + legend_padding
+        legend_x += group_gap
 
-            if legend_x + icon_size > legend_right:
-                legend_x = legend_left
-                legend_y += max_row_height + row_gap
-                max_row_height = 0
+    legend_y += max_row_height + row_gap
 
-        legend_y += max_row_height + row_gap
-
-    weight_hint = FONT_18.render(
+    weight_hint = FONT_14.render(
         "提示：按数字键 2-9 并拖拽鼠标可放置不同权重节点", True, DARK
     )
     hint_rect = weight_hint.get_rect()
