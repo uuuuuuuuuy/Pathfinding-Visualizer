@@ -5,7 +5,17 @@ from typing import Iterable
 
 import pygame
 
-from ..constants import DARK, DARK_BLUE, GREEN, ORANGE, RED, WHITE, WIDTH
+from ..constants import (
+    DARK,
+    DARK_BLUE,
+    GREEN,
+    ORANGE,
+    RED,
+    SUMMARY_HEIGHT,
+    TOP_BAR_HEIGHT,
+    WHITE,
+    WIDTH,
+)
 from ..widgets import Button, Label, Menu
 from ..menu_config import (
     ALGORITHM_DEFINITIONS,
@@ -14,11 +24,9 @@ from ..menu_config import (
     SPEED_OPTIONS,
 )
 
-TOP_BAR_HEIGHT = 68
 BUTTON_FONT_SIZE = 18
 BUTTON_PADDING = 6
 BUTTON_OUTLINE = False
-SUMMARY_HEIGHT = 44
 SUMMARY_PADDING = 6
 SUMMARY_GAP = 16
 
