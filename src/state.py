@@ -8,6 +8,7 @@ class State:
     
     overlay: bool = False
     label: Label
+    status_message: str = ""
     done_visualising: bool
     need_update: bool
     results: dict[str, dict[str, float]]

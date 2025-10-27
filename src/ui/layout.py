@@ -262,7 +262,8 @@ def create_selection_summary(surface: pygame.surface.Surface) -> SelectionSummar
         ("algorithm", "当前算法", "未选择"),
         ("speed", "当前速度", "快速"),
         ("comparison", "比较模式", "关闭"),
-        ("generation", "迷宫生成", "未开始"),
+        ("generation", "当前迷宫", "未开始"),
+        ("status", "状态", "准备就绪"),
     )
 
     fields: dict[str, SummaryField] = {}

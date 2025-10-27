@@ -21,6 +21,7 @@ from .constants import (
     CLOCK,
     DARK,
     DARK_BLUE,
+    FONT_12,
     FONT_14,
     FONT_18,
     GRAY,
@@ -70,7 +71,6 @@ reset_button = top_controls.reset_button
 
 selection_summary = create_selection_summary(WINDOW)
 summary_area = selection_summary.area
-status_area = pygame.Rect(32, summary_area.bottom + 6, WIDTH - 64, 30)
 
 # Instantiate Maze and Animator
 state = State()
@@ -80,27 +80,21 @@ maze_generator = MazeGenerator(animator=animator)
 maze.animator = animator
 maze.generator = maze_generator
 
+state.label = selection_summary.fields["status"].label
+state.status_message = ""
+
 
 def set_status(message: str) -> None:
-    """Update the status banner displayed beneath the toolbar summary."""
+    """Update the status text within the summary row."""
 
-    state.label = Label(
-        message, "center", 0,
-        background_color=pygame.Color(*WHITE),
-        foreground_color=pygame.Color(*DARK),
-        padding=5, font_size=15, outline=False,
-        surface=WINDOW,
-    )
-    state.label.rect.center = status_area.center
-    state.label.text_rect.topleft = (
-        state.label.rect.x + state.label.padding,
-        state.label.rect.y + state.label.padding,
-    )
+    selection_summary.set_value("status", message)
+    state.label = selection_summary.fields["status"].label
+    state.status_message = message
 
 
 def main() -> None:
     """Start here"""
-    set_status("状态：请选择算法并点击“开始可视化”")
+    set_status("请选择算法并点击“开始可视化”")
 
     speed_bundle.set_selection(SpeedSetting.FAST.value)
     maze.set_speed(SpeedSetting.FAST)
@@ -314,14 +308,6 @@ def draw() -> None:
     for field in selection_summary.values():
         field.label.draw()
 
-    pygame.draw.rect(WINDOW, WHITE, status_area)
-    state.label.rect.center = status_area.center
-    state.label.text_rect.topleft = (
-        state.label.rect.x + state.label.padding,
-        state.label.rect.y + state.label.padding,
-    )
-    state.label.draw()
-
     legend_sections = [
         (
             "节点类型",
@@ -344,12 +330,12 @@ def draw() -> None:
 
     legend_left = 32
     legend_right = WIDTH - 32
-    legend_top = status_area.bottom + 10
-    icon_size = 20
-    row_gap = 10
-    item_gap = 18
-    heading_gap = 10
-    group_gap = 24
+    legend_top = summary_area.bottom + 12
+    icon_size = 16
+    row_gap = 6
+    item_gap = 14
+    heading_gap = 8
+    group_gap = 18
 
     legend_x = legend_left
     legend_y = legend_top
@@ -399,7 +385,7 @@ def draw() -> None:
 
     legend_y += max_row_height + row_gap
 
-    weight_hint = FONT_14.render(
+    weight_hint = FONT_12.render(
         "提示：按数字键 2-9 并拖拽鼠标可放置不同权重节点", True, DARK
     )
     hint_rect = weight_hint.get_rect()
@@ -418,7 +404,7 @@ def draw() -> None:
             ]
             algorithm_bundle.set_selection(algorithm_menu.selected.text)
             selection_summary.set_value("algorithm", algorithm_menu.selected.text)
-            set_status("状态：算法已选择，点击“开始可视化”开始演示")
+            set_status("算法已选择，点击“开始可视化”开始演示")
 
             if state.done_visualising:
                 instant_algorithm(maze, state.current_algorithm)
@@ -503,7 +489,7 @@ def draw() -> None:
 
         if generation_menu.selected:
             maze.clear_board()
-            text = state.label.text
+            text = state.status_message
             selected_generation = generation_menu.selected.text
             generation_bundle.set_selection(selected_generation)
             selection_summary.set_value(
@@ -564,7 +550,7 @@ def reset_simulation() -> None:
     state.results_popup = None
     state.current_algorithm = None
 
-    set_status("状态：请选择算法并点击“开始可视化”")
+    set_status("请选择算法并点击“开始可视化”")
 
     algorithm_bundle.set_selection(None)
     speed_bundle.set_selection(SpeedSetting.FAST.value)

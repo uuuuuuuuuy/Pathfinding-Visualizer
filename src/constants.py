@@ -225,6 +225,7 @@ CLOCK = pygame.time.Clock()
 WEIGHT = pygame.image.load("assets/images/weight.png")
 START = pygame.image.load("assets/images/triangle.png")
 GOAL = pygame.image.load("assets/images/circle.png")
+FONT_12 = load_font(12)
 FONT_14 = load_font(14)
 FONT_18 = load_font(18)
 
