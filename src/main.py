@@ -572,6 +572,7 @@ def run_single(idx: int) -> None:
     maze.clear_visited()
     definition = ALGORITHM_DEFINITIONS[idx]
     state.current_algorithm = definition
+    state.done_visualising = False
     solution = maze.solve(definition.search)
 
     def callback() -> None:
@@ -592,6 +593,7 @@ def run_all(algo_idx: int, maze_idx: int = -1) -> None:
     maze.clear_visited()
     definition = ALGORITHM_DEFINITIONS[algo_idx]
     state.current_algorithm = definition
+    state.done_visualising = False
 
     def callback():
         if algo_idx + 1 < len(ALGORITHM_DEFINITIONS):
