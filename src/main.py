@@ -8,9 +8,7 @@ from .maze import GOAL, START, Maze, WEIGHT
 
 from .widgets import (
     Alignment,
-    Button,
     Label,
-    Menu,
     Orientation,
     Popup,
     Table,
@@ -23,11 +21,12 @@ from .constants import (
     CLOCK,
     DARK,
     DARK_BLUE,
+    FONT_12,
+    FONT_14,
     FONT_18,
     GRAY,
     GREEN,
     GREEN_2,
-    HEADER_HEIGHT,
     BLUE_2,
     MIN_SIZE,
     WHITE,
@@ -37,25 +36,41 @@ from .constants import (
     YELLOW
 )
 
+from .menu_config import (
+    ALGORITHM_DEFINITIONS,
+    ALGORITHMS_BY_LABEL,
+    AlgorithmDefinition,
+    SpeedSetting,
+)
+from .ui.layout import create_selection_summary, create_top_bar
+
 # Initialize PyGame
 pygame.init()
 
 # Set up window
 WINDOW = pygame.display.set_mode((WIDTH, HEIGHT), pygame.HWACCEL)
-pygame.display.set_caption("Pathfinding Visualiser")
+pygame.display.set_caption("寻路算法可视化器")
 
 # Top bar
-top = pygame.Rect(0, 0, WIDTH, 80)
+top_controls = create_top_bar(WINDOW)
+top = top_controls.area
+title = top_controls.title
 
-# Title
-title = Label(
-    "Pathfinding Visualiser", 20, 0,
-    background_color=pygame.Color(*DARK_BLUE),
-    foreground_color=pygame.Color(*WHITE),
-    padding=6, font_size=20, bold=True,
-    surface=WINDOW,
-)
-title.rect.centery = top.centery
+algorithm_bundle = top_controls.algorithm
+speed_bundle = top_controls.speed
+comparison_bundle = top_controls.comparison
+generation_bundle = top_controls.generation
+
+algorithm_menu = algorithm_bundle.menu
+speed_menu = speed_bundle.menu
+visualize_button = top_controls.visualize_button
+comparison_menu = comparison_bundle.menu
+generation_menu = generation_bundle.menu
+pause_button = top_controls.pause_button
+reset_button = top_controls.reset_button
+
+selection_summary = create_selection_summary(WINDOW)
+summary_area = selection_summary.area
 
 # Instantiate Maze and Animator
 state = State()
@@ -65,263 +80,27 @@ maze_generator = MazeGenerator(animator=animator)
 maze.animator = animator
 maze.generator = maze_generator
 
-
-# Algorithms list
-algorithm_btn = Button(
-    surface=WINDOW,
-    text="Algorithms",
-    x=title.width + 70,
-    y=0,
-    background_color=pygame.Color(*DARK_BLUE),
-    foreground_color=pygame.Color(*WHITE),
-    font_size=20, outline=False
-)
-algorithm_btn.rect.centery = top.centery
+state.label = selection_summary.fields["status"].label
+state.status_message = ""
 
 
-algo_menu = Menu(
-    surface=WINDOW,
-    button=algorithm_btn,
-    children=[
-        Button(
-            surface=WINDOW,
-            text="A* Search",
-            x=algorithm_btn.rect.x - 40,
-            y=0,
-            background_color=pygame.Color(*DARK_BLUE),
-            foreground_color=pygame.Color(*WHITE),
-            font_size=20, outline=False
-        ),
-        Button(
-            surface=WINDOW,
-            text="Dijkstra's Search",
-            x=algorithm_btn.rect.x - 40,
-            y=algorithm_btn.rect.y + algorithm_btn.height * 2,
-            background_color=pygame.Color(*DARK_BLUE),
-            foreground_color=pygame.Color(*WHITE),
-            font_size=20, outline=False
-        ),
-        Button(
-            surface=WINDOW,
-            text="Greedy Best First Search",
-            x=algorithm_btn.rect.x - 40,
-            y=algorithm_btn.rect.y + algorithm_btn.height * 3,
-            background_color=pygame.Color(*DARK_BLUE),
-            foreground_color=pygame.Color(*WHITE),
-            font_size=20, outline=False
-        ),
-        Button(
-            surface=WINDOW,
-            text="Breadth First Search",
-            x=algorithm_btn.rect.x - 40,
-            y=algorithm_btn.rect.y + algorithm_btn.height * 3,
-            background_color=pygame.Color(*DARK_BLUE),
-            foreground_color=pygame.Color(*WHITE),
-            font_size=20, outline=False
-        ),
-        Button(
-            surface=WINDOW,
-            text="Depth First Search",
-            x=algorithm_btn.rect.x - 40,
-            y=algorithm_btn.rect.y + algorithm_btn.height * 4,
-            background_color=pygame.Color(*DARK_BLUE),
-            foreground_color=pygame.Color(*WHITE),
-            font_size=20, outline=False
-        ),
-    ]
-)
+def set_status(message: str) -> None:
+    """Update the status text within the summary row."""
 
-speed_btn = Button(
-    surface=WINDOW,
-    text="Speed",
-    x=algorithm_btn.rect.right + 40,
-    y=0,
-    background_color=pygame.Color(*DARK_BLUE),
-    foreground_color=pygame.Color(*WHITE),
-    font_size=20, outline=False
-)
-speed_btn.rect.centery = top.centery
-speed_btn.rect.y -= 15
-
-
-speed_menu = Menu(
-    surface=WINDOW,
-    button=speed_btn,
-    children=[
-        Button(
-            surface=WINDOW,
-            text="Fast",
-            x=0,
-            y=0,
-            background_color=pygame.Color(*DARK_BLUE),
-            foreground_color=pygame.Color(*WHITE),
-            font_size=20, outline=False
-        ),
-        Button(
-            surface=WINDOW,
-            text="Medium",
-            x=0,
-            y=0,
-            background_color=pygame.Color(*DARK_BLUE),
-            foreground_color=pygame.Color(*WHITE),
-            font_size=20, outline=False
-        ),
-        Button(
-            surface=WINDOW,
-            text="Slow",
-            x=0,
-            y=0,
-            background_color=pygame.Color(*DARK_BLUE),
-            foreground_color=pygame.Color(*WHITE),
-            font_size=20, outline=False
-        ),
-    ]
-)
-
-# Button instance for VISUALISE button
-visualise_btn = Button(
-    "VISUALISE", "center", 0,
-    background_color=pygame.Color(*GREEN),
-    foreground_color=pygame.Color(*WHITE),
-    padding=6, font_size=20, outline=False,
-    surface=WINDOW,
-)
-visualise_btn.rect.centery = top.centery
-
-#
-compare_btn = Button(
-    "Run All    ", 0, 0,
-    background_color=pygame.Color(*DARK_BLUE),
-    foreground_color=pygame.Color(*WHITE),
-    font_size=20, outline=False,
-    surface=WINDOW,
-)
-compare_btn.rect.centery = top.centery
-compare_btn.rect.left = visualise_btn.rect.right + 50
-
-comapre_menu = Menu(
-    surface=WINDOW,
-    button=compare_btn,
-    children=[
-        Button(
-            surface=WINDOW,
-            text="Current Maze",
-            x=0,
-            y=0,
-            background_color=pygame.Color(*DARK_BLUE),
-            foreground_color=pygame.Color(*WHITE),
-            font_size=20, outline=False
-        ),
-        Button(
-            surface=WINDOW,
-            text="Different Mazes",
-            x=0,
-            y=0,
-            background_color=pygame.Color(*DARK_BLUE),
-            foreground_color=pygame.Color(*WHITE),
-            font_size=20, outline=False
-        ),
-    ]
-)
-
-generate_btn = Button(
-    "Generate Maze", 0, 0,
-    background_color=pygame.Color(*DARK_BLUE),
-    foreground_color=pygame.Color(*WHITE),
-    font_size=20, outline=False,
-    surface=WINDOW,
-)
-generate_btn.rect.centery = top.centery
-generate_btn.rect.left = compare_btn.rect.right + 50
-
-
-generate_menu = Menu(
-    surface=WINDOW,
-    button=generate_btn,
-    children=[
-        Button(
-            surface=WINDOW,
-            text="Recursive Division",
-            x=generate_btn.rect.x - 40,
-            y=generate_btn.rect.y + generate_btn.height,
-            background_color=pygame.Color(*DARK_BLUE),
-            foreground_color=pygame.Color(*WHITE),
-            font_size=20, outline=False
-        ),
-
-        Button(
-            surface=WINDOW,
-            text="Prim's Algorithm",
-            x=generate_btn.rect.x - 40,
-            y=generate_btn.rect.y + generate_btn.height,
-            background_color=pygame.Color(*DARK_BLUE),
-            foreground_color=pygame.Color(*WHITE),
-            font_size=20, outline=False
-        ),
-        Button(
-            surface=WINDOW,
-            text="Randomised DFS",
-            x=generate_btn.rect.x - 40,
-            y=generate_btn.rect.y + generate_btn.height,
-            background_color=pygame.Color(*DARK_BLUE),
-            foreground_color=pygame.Color(*WHITE),
-            font_size=20, outline=False
-        ),
-        Button(
-            surface=WINDOW,
-            text="Basic Random Maze",
-            x=generate_btn.rect.x - 40,
-            y=generate_btn.rect.y + generate_btn.height * 2,
-            background_color=pygame.Color(*DARK_BLUE),
-            foreground_color=pygame.Color(*WHITE),
-            font_size=20, outline=False
-        ),
-        Button(
-            surface=WINDOW,
-            text="Basic Weight Maze",
-            x=generate_btn.rect.x - 40,
-            y=generate_btn.rect.y + generate_btn.height * 2,
-            background_color=pygame.Color(*DARK_BLUE),
-            foreground_color=pygame.Color(*WHITE),
-            font_size=20, outline=False
-        ),
-    ]
-)
-
-
-# Button instance for Clear button
-clear_btn = Button(
-    "Clear Walls", 0, 0,
-    background_color=pygame.Color(*DARK_BLUE),
-    foreground_color=pygame.Color(*WHITE),
-    padding=6, font_size=20, outline=False,
-    surface=WINDOW,
-)
-clear_btn.rect.centery = top.centery
-clear_btn.rect.right = WIDTH - 20
+    selection_summary.set_value("status", message)
+    state.label = selection_summary.fields["status"].label
+    state.status_message = message
 
 
 def main() -> None:
     """Start here"""
-    state.label = Label(
-        "Choose an algorithm", "center", 0,
-        background_color=pygame.Color(*WHITE),
-        foreground_color=pygame.Color(*DARK),
-        padding=6, font_size=20, outline=False,
-        surface=WINDOW,
-    )
-    state.label.rect.bottom = HEADER_HEIGHT - 10
+    set_status("请选择算法并点击“开始可视化”")
 
-    state.speed_label = Label(
-        surface=WINDOW,
-        text="Fast",
-        font_size=16,
-        x=speed_btn.rect.x,
-        y=speed_btn.rect.bottom,
-        foreground_color=pygame.Color(*WHITE),
-        background_color=pygame.Color(*BLUE_2),
-    )
-    state.speed_label.rect.centerx = speed_btn.rect.centerx
+    speed_bundle.set_selection(SpeedSetting.FAST.value)
+    maze.set_speed(SpeedSetting.FAST)
+    selection_summary.set_value("speed", SpeedSetting.FAST.value)
+    selection_summary.set_value("comparison", "关闭")
+    selection_summary.set_value("generation", "未开始")
 
     # Game loop
     mouse_is_down = False
@@ -458,8 +237,8 @@ def main() -> None:
                     maze.set_cell((row, col), cell_value)
                     maze.set_cell(cell_under_mouse, "1")
 
-                    text = state.label.text.split(" took")[0]
-                    instant_algorithm(maze, text)
+                    if state.current_algorithm:
+                        instant_algorithm(maze, state.current_algorithm)
                     cell_under_mouse = (row, col)
 
         # Update
@@ -467,16 +246,16 @@ def main() -> None:
         CLOCK.tick(FPS)
 
 
-def instant_algorithm(maze: Maze, algo_name: str):
+def instant_algorithm(maze: Maze, algorithm: AlgorithmDefinition) -> None:
     """Find path without animation
 
     Args:
         maze (Maze): Maze
-        algo_name (str): Algorithm name
+        algorithm (AlgorithmDefinition): Algorithm to solve with
     """
     maze.clear_visited()
 
-    solution = maze.solve(algo_name=algo_name)
+    solution = maze.solve(algorithm.search)
 
     path = solution.path
     explored = solution.explored
@@ -517,168 +296,226 @@ def get_pressed() -> tuple[bool, int | None]:
 def draw() -> None:
     """Draw things (except Visualise button)
     """
+    top_controls.layout()
+
     # Fill white, draw top background and title text
     WINDOW.fill(WHITE)
     pygame.draw.rect(WINDOW, DARK_BLUE, top)
     title.draw()
 
-    # Draw maze legend
-    texts = {
-        "Start Node": WHITE,
-        "Visited Node": BLUE,
-        "Shortest-Path Node": YELLOW,
-        "Unvisited Node": WHITE,
-        "Wall Node": DARK,
-        "Weighted Node": WHITE,
-        "Target Node": WHITE,
-    }
+    pygame.draw.rect(WINDOW, BLUE_2, summary_area)
+    selection_summary.layout()
+    for field in selection_summary.values():
+        field.label.draw()
 
-    x = 50
-    y = top.bottom + 20
-    for text in texts:
-        # Rectangle (Symbol)
-        pygame.draw.rect(WINDOW, texts[text], (x, y, 30, 30))
-        pygame.draw.rect(WINDOW, GRAY, (x, y, 30, 30), width=1)
+    legend_sections = [
+        (
+            "节点类型",
+            [
+                ("迷宫节点", WHITE, None),
+                ("障碍物节点", DARK, None),
+                ("权重节点", WHITE, WEIGHT),
+            ],
+        ),
+        (
+            "搜索状态",
+            [
+                ("起点节点", WHITE, START),
+                ("目标节点", WHITE, GOAL),
+                ("访问过的节点", BLUE, None),
+                ("最短路径节点", YELLOW, None),
+            ],
+        ),
+    ]
 
-        # Text (Meaning)
-        text_surf = FONT_18.render(text, True, DARK)
-        text_rect = text_surf.get_rect()
-        text_rect.centery = y + 30 // 2
+    legend_left = 32
+    legend_right = WIDTH - 32
+    legend_top = summary_area.bottom + 12
+    icon_size = 16
+    row_gap = 6
+    item_gap = 14
+    heading_gap = 8
+    group_gap = 18
 
-        WINDOW.blit(text_surf, (x + 30 + 10, text_rect.y))
+    legend_x = legend_left
+    legend_y = legend_top
+    max_row_height = icon_size
 
-        # Formating
-        if texts[text] == DARK:
-            y += text_surf.get_height() + 30
-        elif text != "Weighted Node":
-            x += 30 + 10 + text_surf.get_width() + 75
+    for heading, items in legend_sections:
+        heading_text = f"{heading}："
+        heading_surf = FONT_14.render(heading_text, True, DARK_BLUE)
+        heading_rect = heading_surf.get_rect()
+        heading_rect.centery = legend_y + icon_size // 2
+        heading_rect.left = legend_x
 
-        # Draw images for weighted, start and target node
-        if text == "Weighted Node":
-            WINDOW.blit(WEIGHT, (x + 3, y + 3))
-            x = 50
-        elif text == "Start Node":
-            image_rect = START.get_rect(center=(65, top.bottom + 35))
-            WINDOW.blit(START, image_rect)
-        elif text == "Target Node":
-            image_rect = GOAL.get_rect(center=(65, y + 15))
-            WINDOW.blit(GOAL, image_rect)
+        if heading_rect.right > legend_right:
+            legend_x = legend_left
+            legend_y += max_row_height + row_gap
+            max_row_height = icon_size
+            heading_rect.left = legend_x
+            heading_rect.centery = legend_y + icon_size // 2
 
-    # Draw algo label
-    state.label.draw()
-    state.speed_label.draw()
+        WINDOW.blit(heading_surf, heading_rect)
+        legend_x = heading_rect.right + heading_gap
+
+        for label, color, icon in items:
+            if legend_x + icon_size > legend_right:
+                legend_x = legend_left
+                legend_y += max_row_height + row_gap
+                max_row_height = icon_size
+
+            icon_rect = pygame.Rect(legend_x, legend_y, icon_size, icon_size)
+            pygame.draw.rect(WINDOW, color, icon_rect)
+            pygame.draw.rect(WINDOW, GRAY, icon_rect, width=1)
+
+            if icon:
+                asset_rect = icon.get_rect(center=icon_rect.center)
+                WINDOW.blit(icon, asset_rect)
+
+            text_surf = FONT_14.render(label, True, DARK)
+            text_rect = text_surf.get_rect()
+            text_rect.midleft = (icon_rect.right + 6, icon_rect.centery)
+            WINDOW.blit(text_surf, text_rect)
+
+            item_height = max(icon_rect.height, text_rect.height)
+            max_row_height = max(max_row_height, item_height)
+            legend_x = text_rect.right + item_gap
+
+        legend_x += group_gap
+
+    legend_y += max_row_height + row_gap
+
+    weight_hint = FONT_12.render(
+        "提示：按数字键 2-9 并拖拽鼠标可放置不同权重节点", True, DARK
+    )
+    hint_rect = weight_hint.get_rect()
+    hint_rect.topleft = (legend_left, legend_y)
+    WINDOW.blit(weight_hint, hint_rect)
 
     maze.draw()
 
     # Handle buttons
-    if (algo_menu.draw() or algo_menu.clicked) \
+    if (algorithm_menu.draw() or algorithm_menu.clicked) \
             and not maze.animator.animating:
         state.overlay = True
-        if algo_menu.selected:
-            state.label = Label(
-                algo_menu.selected.text, "center", 0,
-                background_color=pygame.Color(*WHITE),
-                foreground_color=pygame.Color(*DARK),
-                padding=6, font_size=20, outline=False,
-                surface=WINDOW,
-            )
-            state.label.rect.bottom = HEADER_HEIGHT - 10
+        if algorithm_menu.selected:
+            state.current_algorithm = ALGORITHMS_BY_LABEL[
+                algorithm_menu.selected.text
+            ]
+            algorithm_bundle.set_selection(algorithm_menu.selected.text)
+            selection_summary.set_value("algorithm", algorithm_menu.selected.text)
+            set_status("算法已选择，点击“开始可视化”开始演示")
 
             if state.done_visualising:
-                text = state.label.text.split(" takes")[0]
-                instant_algorithm(maze, text)
+                instant_algorithm(maze, state.current_algorithm)
 
             state.overlay = False
+
+    if algorithm_menu.just_closed and state.overlay and not (
+        animator.animating or state.results_popup
+    ):
+        state.overlay = False
 
     if (speed_menu.draw() or speed_menu.clicked) \
             and not maze.animator.animating:
         state.overlay = True
 
         if speed_menu.selected:
-            state.speed_label = Label(
-                surface=WINDOW,
-                text=speed_menu.selected.text,
-                font_size=16,
-                x=speed_btn.rect.x,
-                y=speed_btn.rect.bottom,
-                foreground_color=pygame.Color(*WHITE),
-                background_color=pygame.Color(*BLUE_2),
-            )
-            state.speed_label.rect.centerx = speed_btn.rect.centerx
-            maze.set_speed(speed_menu.selected.text)
+            maze.set_speed(SpeedSetting(speed_menu.selected.text))
+            speed_bundle.set_selection(speed_menu.selected.text)
+            selection_summary.set_value("speed", speed_menu.selected.text)
             state.overlay = False
 
-    if visualise_btn.draw() \
-        and not state.label.text.startswith("Choose") \
+    if speed_menu.just_closed and state.overlay and not (
+        animator.animating or state.results_popup
+    ):
+        state.overlay = False
+
+    if visualize_button.draw() \
+        and state.current_algorithm \
             and not maze.animator.animating:
         state.overlay = True
 
-        text = state.label.text.split(" took")[0]
-        text = text.split("Running ")[-1]
-        idx = [algo_menu.children.index(btn)
-               for btn in algo_menu.children if btn.text == text][0]
+        idx = ALGORITHM_DEFINITIONS.index(state.current_algorithm)
         run_single(idx)
 
-    if clear_btn.draw() and not maze.animator.animating:
-        maze.clear_board()
-        state.done_visualising = False
-        state.need_update = True
+    pause_clicked = pause_button.draw()
+    if pause_clicked:
+        if animator.paused:
+            animator.resume()
+            pause_button.update_text("暂停动画")
+            pause_button.set_active(False)
+        elif animator.nodes_to_animate:
+            animator.pause()
+            pause_button.update_text("继续动画")
+            pause_button.set_active(True)
+        else:
+            pause_button.update_text("暂停动画")
+            pause_button.set_active(False)
 
-    if (comapre_menu.draw() or comapre_menu.clicked) \
+    if not animator.nodes_to_animate and not animator.animating and not animator.paused:
+        pause_button.update_text("暂停动画")
+        pause_button.set_active(False)
+
+    if reset_button.draw():
+        reset_simulation()
+
+    if (comparison_menu.draw() or comparison_menu.clicked) \
             and not animator.animating:
         state.overlay = True
 
-        if comapre_menu.selected \
-                and comapre_menu.selected.text == "Current Maze":
+        if comparison_menu.selected \
+                and comparison_menu.selected.text == "当前迷宫":
+            comparison_bundle.set_selection(comparison_menu.selected.text)
+            selection_summary.set_value("comparison", comparison_menu.selected.text)
             state.results = {}
             run_all(0)
-        elif comapre_menu.selected \
-                and comapre_menu.selected.text == "Different Mazes":
+        elif comparison_menu.selected \
+                and comparison_menu.selected.text == "不同迷宫":
             state.run_all_mazes = True
             state.results = {}
+            comparison_bundle.set_selection(comparison_menu.selected.text)
+            selection_summary.set_value("comparison", comparison_menu.selected.text)
             run_all(0)
 
-    if (generate_menu.draw() or generate_menu.clicked) \
+    if comparison_menu.just_closed and state.overlay and not (
+        animator.animating or state.results_popup
+    ):
+        state.overlay = False
+
+    if (generation_menu.draw() or generation_menu.clicked) \
             and not animator.animating:
         state.overlay = True
 
-        if generate_menu.selected:
+        if generation_menu.selected:
             maze.clear_board()
-            text = state.label.text
+            text = state.status_message
+            selected_generation = generation_menu.selected.text
+            generation_bundle.set_selection(selected_generation)
+            selection_summary.set_value(
+                "generation", f"{selected_generation}（进行中）"
+            )
 
             def callback():
                 state.overlay = False
-                state.label = Label(
-                    f"{text}", "center", 0,
-                    background_color=pygame.Color(*WHITE),
-                    foreground_color=pygame.Color(*DARK),
-                    padding=6, font_size=20, outline=False,
-                    surface=WINDOW,
-                )
-                state.label.rect.bottom = HEADER_HEIGHT - 10
+                set_status(text)
+                selection_summary.set_value("generation", selected_generation)
 
             maze.generate_maze(
-                algorithm=generate_menu.selected.text,
+                algorithm=selected_generation,
                 after_generation=callback
             )
 
-            algorithm = generate_menu.selected.text
+            algorithm = selected_generation
 
-            if "Weight" in algorithm:
-                new_text = "Generating basic weight maze"
-            elif "Basic Random" in algorithm:
-                new_text = "Generating maze randomly"
+            if algorithm == "基本权重迷宫":
+                new_text = "正在生成基本权重迷宫"
+            elif algorithm == "基本随机迷宫":
+                new_text = "正在随机生成迷宫"
             else:
-                new_text = f"Generating maze using {algorithm}"
+                new_text = f"正在使用 {algorithm} 生成迷宫"
 
-            state.label = Label(
-                new_text, "center", 0,
-                background_color=pygame.Color(*WHITE),
-                foreground_color=pygame.Color(*DARK),
-                padding=6, font_size=20, outline=False,
-                surface=WINDOW,
-            )
-            state.label.rect.bottom = HEADER_HEIGHT - 10
+            set_status(new_text)
 
     if state.results_popup:
         state.overlay = True
@@ -686,93 +523,104 @@ def draw() -> None:
             state.results_popup = None
             state.overlay = False
 
+    if not (
+        algorithm_menu.clicked
+        or speed_menu.clicked
+        or comparison_menu.clicked
+        or generation_menu.clicked
+        or state.results_popup
+        or animator.animating
+        or animator.nodes_to_animate
+    ) and state.overlay:
+        state.overlay = False
+
+
+def reset_simulation() -> None:
+    """Stop ongoing animations and restore the default maze configuration."""
+
+    animator.stop()
+    maze.clear_board()
+    maze.set_speed(SpeedSetting.FAST)
+
+    state.done_visualising = False
+    state.need_update = True
+    state.overlay = False
+    state.results = {}
+    state.run_all_mazes = False
+    state.results_popup = None
+    state.current_algorithm = None
+
+    set_status("请选择算法并点击“开始可视化”")
+
+    algorithm_bundle.set_selection(None)
+    speed_bundle.set_selection(SpeedSetting.FAST.value)
+    comparison_bundle.set_selection(None)
+    generation_bundle.set_selection(None)
+
+    selection_summary.set_value("algorithm", None)
+    selection_summary.set_value("speed", SpeedSetting.FAST.value)
+    selection_summary.set_value("comparison", "关闭")
+    selection_summary.set_value("generation", "未开始")
+
+    pause_button.update_text("暂停动画")
+    pause_button.set_active(False)
+
 
 def run_single(idx: int) -> None:
-    """Run a single algorithm on one maze
+    """Run a single algorithm on one maze."""
 
-    Args:
-        idx (int): Algorithm index
-    """
     maze.clear_visited()
-    text = algo_menu.children[idx].text
-    solution = maze.solve(text)
+    definition = ALGORITHM_DEFINITIONS[idx]
+    state.current_algorithm = definition
+    state.done_visualising = False
+    solution = maze.solve(definition.search)
 
-    def callback():
+    def callback() -> None:
         state.done_visualising = True
-        state.label = Label(
-            f"{text} took {solution.explored_length} steps in "
-            f"{solution.time:.2f}ms", "center", 0,
-            background_color=pygame.Color(*WHITE),
-            foreground_color=pygame.Color(*DARK),
-            padding=6, font_size=20, outline=False,
-            surface=WINDOW,
+        set_status(
+            f"{definition.label} 共探索 {solution.explored_length} 步，耗时 {solution.time:.2f} 毫秒"
         )
-        state.label.rect.bottom = HEADER_HEIGHT - 10
         state.overlay = False
 
     maze.visualize(solution=solution, after_animation=callback)
 
-    state.label = Label(
-        f"Running {text}", "center", 0,
-        background_color=pygame.Color(*WHITE),
-        foreground_color=pygame.Color(*DARK),
-        padding=6, font_size=20, outline=False,
-        surface=WINDOW,
-    )
-    state.label.rect.bottom = HEADER_HEIGHT - 10
+    set_status(f"正在运行 {definition.label}")
 
 
 def run_all(algo_idx: int, maze_idx: int = -1) -> None:
-    """Run all the algorithms on current or all mazes
+    """Run all algorithms on the current maze or across multiple mazes."""
 
-    Args:
-        algo_idx (int): Algorithm index
-        maze_idx (int, optional): Maze index. Defaults to -1.
-    """
     maze.clear_visited()
-    text = algo_menu.children[algo_idx].text
+    definition = ALGORITHM_DEFINITIONS[algo_idx]
+    state.current_algorithm = definition
+    state.done_visualising = False
 
     def callback():
-        if algo_idx + 1 < len(algo_menu.children):
+        if algo_idx + 1 < len(ALGORITHM_DEFINITIONS):
             run_all(algo_idx + 1, maze_idx)
-        elif state.run_all_mazes \
-                and maze_idx + 1 < len(generate_menu.children):
+        elif state.run_all_mazes and maze_idx + 1 < len(generation_menu.children):
             maze.clear_board()
 
             def after_generation():
                 run_all(0, maze_idx + 1)
 
             maze.generate_maze(
-                algorithm=generate_menu.children[maze_idx + 1].text,
+                algorithm=generation_menu.children[maze_idx + 1].text,
                 after_generation=after_generation
             )
 
-            algorithm = generate_menu.children[maze_idx + 1].text
+            algorithm = generation_menu.children[maze_idx + 1].text
 
-            if "Weight" in algorithm:
-                new_text = "Generating basic weight maze"
-            elif "Basic Random" in algorithm:
-                new_text = "Generating maze randomly"
+            if algorithm == "基本权重迷宫":
+                new_text = "正在生成基本权重迷宫"
+            elif algorithm == "基本随机迷宫":
+                new_text = "正在随机生成迷宫"
             else:
-                new_text = f"Generating maze using {algorithm}"
+                new_text = f"正在使用 {algorithm} 生成迷宫"
 
-            state.label = Label(
-                new_text, "center", 0,
-                background_color=pygame.Color(*WHITE),
-                foreground_color=pygame.Color(*DARK),
-                padding=6, font_size=20, outline=False,
-                surface=WINDOW,
-            )
-            state.label.rect.bottom = HEADER_HEIGHT - 10
+            set_status(new_text)
         else:
-            state.label = Label(
-                text, "center", 0,
-                background_color=pygame.Color(*WHITE),
-                foreground_color=pygame.Color(*DARK),
-                padding=6, font_size=20, outline=False,
-                surface=WINDOW,
-            )
-            state.label.rect.bottom = HEADER_HEIGHT - 10
+            set_status("比较完成，查看结果表获取详细数据")
 
             results = list(state.results.items())
 
@@ -789,26 +637,19 @@ def run_all(algo_idx: int, maze_idx: int = -1) -> None:
             state.run_all_mazes = False
             state.overlay = False
 
-    solution = maze.solve(text)
+    solution = maze.solve(definition.search)
 
-    if text not in state.results:
-        state.results[text] = vars(solution)
+    if definition.label not in state.results:
+        state.results[definition.label] = vars(solution)
     else:
-        state.results[text]["explored_length"] += solution.explored_length
-        state.results[text]["path_length"] += solution.path_length
-        state.results[text]["path_cost"] += solution.path_cost
-        state.results[text]["time"] += solution.time
+        state.results[definition.label]["explored_length"] += solution.explored_length
+        state.results[definition.label]["path_length"] += solution.path_length
+        state.results[definition.label]["path_cost"] += solution.path_cost
+        state.results[definition.label]["time"] += solution.time
 
     maze.visualize(solution=solution, after_animation=callback)
 
-    state.label = Label(
-        f"Running {text}", "center", 0,
-        background_color=pygame.Color(*WHITE),
-        foreground_color=pygame.Color(*DARK),
-        padding=6, font_size=20, outline=False,
-        surface=WINDOW,
-    )
-    state.label.rect.bottom = HEADER_HEIGHT - 10
+    set_status(f"正在运行 {definition.label}")
 
 
 def show_results(results: list[tuple[str, dict[str, float]]]) -> None:
@@ -821,7 +662,7 @@ def show_results(results: list[tuple[str, dict[str, float]]]) -> None:
     children.append([
         TableCell(
             child=Label(
-                    "Algorithm", 0, 0,
+                    "算法", 0, 0,
                     background_color=pygame.Color(*DARK_BLUE),
                     foreground_color=pygame.Color(*WHITE),
                     padding=6, font_size=20, outline=False,
@@ -831,7 +672,7 @@ def show_results(results: list[tuple[str, dict[str, float]]]) -> None:
         ),
         TableCell(
             child=Label(
-                "Steps Explored", 0, 0,
+                "探索步数", 0, 0,
                 background_color=pygame.Color(*DARK_BLUE),
                 foreground_color=pygame.Color(*WHITE),
                 padding=6, font_size=20, outline=False,
@@ -841,7 +682,7 @@ def show_results(results: list[tuple[str, dict[str, float]]]) -> None:
         ),
         TableCell(
             child=Label(
-                "Path Length", 0, 0,
+                "路径长度", 0, 0,
                 background_color=pygame.Color(*DARK_BLUE),
                 foreground_color=pygame.Color(*WHITE),
                 padding=6, font_size=20, outline=False,
@@ -851,7 +692,7 @@ def show_results(results: list[tuple[str, dict[str, float]]]) -> None:
         ),
         TableCell(
             child=Label(
-                "Path Cost", 0, 0,
+                "路径成本", 0, 0,
                 background_color=pygame.Color(*DARK_BLUE),
                 foreground_color=pygame.Color(*WHITE),
                 padding=6, font_size=20, outline=False,
@@ -861,7 +702,7 @@ def show_results(results: list[tuple[str, dict[str, float]]]) -> None:
         ),
         TableCell(
             child=Label(
-                "Time Taken", 0, 0,
+                "耗时", 0, 0,
                 background_color=pygame.Color(*DARK_BLUE),
                 foreground_color=pygame.Color(*WHITE),
                 padding=6, font_size=20, outline=False,
@@ -922,7 +763,7 @@ def show_results(results: list[tuple[str, dict[str, float]]]) -> None:
             ),
             TableCell(
                 child=Label(
-                    f"{result[1]['time']:.2f}ms", 0, 0,
+                    f"{result[1]['time']:.2f} 毫秒", 0, 0,
                     background_color=pygame.Color(*colors[i]),
                     foreground_color=pygame.Color(*DARK),
                     padding=6, font_size=20, outline=False,
@@ -944,7 +785,7 @@ def show_results(results: list[tuple[str, dict[str, float]]]) -> None:
         y_align=Alignment.CENTER,
         children=[
             Label(
-                "COMPARISON RESULTS", 0, 0,
+                "比较结果", 0, 0,
                 background_color=pygame.Color(*DARK),
                 foreground_color=pygame.Color(*WHITE),
                 padding=10, font_size=20, outline=False,

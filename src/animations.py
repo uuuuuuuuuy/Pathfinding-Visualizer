@@ -72,6 +72,8 @@ class Animator:
         self.animating = False
         self.nodes_to_animate: dict[tuple[int, int], list[AnimatingNode]] = {}
         self.need_update = False
+        self.paused = False
+        self._paused_at = 0
 
     def add_nodes_to_animate(
         self,
@@ -111,6 +113,9 @@ class Animator:
     def animate_nodes(self):
         """Animate nodes in the nodes_to_animate list
         """
+        if self.paused:
+            return
+
         # Update starting time for animating nodes
         if self.need_update:
             for center in self.nodes_to_animate:
@@ -174,6 +179,40 @@ class Animator:
 
                 if node.after_animation:
                     node.after_animation()
+
+    def pause(self) -> None:
+        """Pause the animation timeline until resumed."""
+
+        if self.paused or not self.nodes_to_animate:
+            return
+
+        self.paused = True
+        self._paused_at = pygame.time.get_ticks()
+
+    def resume(self) -> None:
+        """Resume animations after a pause."""
+
+        if not self.paused:
+            return
+
+        paused_duration = pygame.time.get_ticks() - self._paused_at
+        for nodes in self.nodes_to_animate.values():
+            for node in nodes:
+                node.ticks += paused_duration
+                node.start += paused_duration
+
+        self.paused = False
+        self.need_update = True
+        self._paused_at = 0
+
+    def stop(self) -> None:
+        """Clear queued animations and reset the animator state."""
+
+        self.nodes_to_animate.clear()
+        self.animating = False
+        self.need_update = False
+        self.paused = False
+        self._paused_at = 0
 
     def _wall_animation(self, node: AnimatingNode) -> None:
         """Handle wall animation

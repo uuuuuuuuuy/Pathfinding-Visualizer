@@ -1,3 +1,4 @@
+from src.menu_config import AlgorithmDefinition
 from src.pathfinder.models.solution import Solution
 from src.widgets import Label, Popup
 
@@ -7,12 +8,13 @@ class State:
     
     overlay: bool = False
     label: Label
-    speed_label: Label
+    status_message: str = ""
     done_visualising: bool
     need_update: bool
     results: dict[str, dict[str, float]]
     run_all_mazes = False
     results_popup: Popup | None = None
+    current_algorithm: AlgorithmDefinition | None = None
 
     def __new__(cls):
         if State.__instance is None:
